@@ -5,32 +5,50 @@
 
 
 
+# PDF Merger Web Application
 
-# combinepdf
-Web application built using Flask that allows upload multiple PDF files and merge them into a single PDF file.
+This is a simple web application built using Flask that allows users to upload PDF files and merge them into a single PDF file.
 
-Getting Started
-Follow the steps below to get the application up and running on your local machine.
+## test on Environment
+Python 3.10.9
 
-Test On Python 3.10.9
+## Features
 
-Installation
-Clone or download this repository to your local machine.
+- Drag and Drop fileUpload multiple PDF files for merging.
+- Change the sequence of files by dragging and dropping
+  
+  ![image](https://github.com/lookmhen/combinepdf/assets/29670155/d60c912a-321d-4d50-8070-42204373f1a4)
+  
+- Automatic cleanup of temporary files after a certain period.
+- Unique session management using secure tokens.
+- PDF merging using PyPDF2 library.
+- Basic error handling and logging.
 
-Open a terminal or command prompt and navigate to the project directory:
+## Getting Started
 
-pip install -r requirements.txt
-Usage
-Start the Flask development server:
+1. Clone this repository to your local machine.
+2. Install the required dependencies using `pip install -r requirements.txt`.
+3. Run the application using `python app.py` or start.cmd .
+4. Access the application in your web browser at `http://localhost:8080`.
 
-python app.py
-Open your web browser and navigate to http://localhost:8080
+## Usage
 
-You will see the home page of the PDF Merger application. Click on the "Choose Files" button to select the PDF files you want to merge.
+1. Visit the homepage and click on the "Merge PDFs" button.
+2. Upload the PDF files you want to merge.
+3. Click the "Merge" button to merge the uploaded files.
+4. Download the merged PDF file.
 
-Once you have selected the files, click the "Merge Files" button. The application will merge the PDF files and provide a download link for the merged PDF.
+## Configuration
 
-You can download the merged PDF file and save it to your computer.
+- The `MAX_LIFETIME` variable in `app.py` sets the maximum lifetime (in seconds) of temporary files before they're cleaned up.
 
-Cleanup
-The application automatically cleans up temporary files that are generated during the merging process. Temporary files are removed after 1 minute.
+## Contributing
+
+Contributions are welcome! If you find a bug or want to add a new feature, please feel free to open an issue or submit a pull request.
+
+
+## Acknowledgements
+
+- This project was inspired by the need to merge PDF files easily.
+- The Flask framework and PyPDF2 library were crucial for building this application.
+
