@@ -34,15 +34,11 @@ This is a simple web application built using Flask that allows users to upload P
 ## Configuration
 
 - The `MAX_LIFETIME` variable in `app.py` sets the maximum lifetime (in seconds) of temporary files before they're cleaned up.
-- You can configure SSL using the commented out SSL context configuration in `app.py`.
 
 ## Contributing
 
 Contributions are welcome! If you find a bug or want to add a new feature, please feel free to open an issue or submit a pull request.
 
-## License
-
-This project is licensed under the [MIT License](LICENSE).
 
 ## Acknowledgements
 
