@@ -6,7 +6,7 @@ import secrets
 import time
 
 # Define the maximum lifetime of a temporary file in seconds
-MAX_LIFETIME = 60  # 1 min
+MAX_LIFETIME = 120  # 2 min
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
