@@ -16,8 +16,9 @@ Python 3.10.9
 
 - Drag and Drop fileUpload multiple PDF files for merging.
 - Change the sequence of files by dragging and dropping
+  
   ![image](https://github.com/lookmhen/combinepdf/assets/29670155/d60c912a-321d-4d50-8070-42204373f1a4)
-
+  
 - Automatic cleanup of temporary files after a certain period.
 - Unique session management using secure tokens.
 - PDF merging using PyPDF2 library.
