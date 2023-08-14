@@ -10,9 +10,9 @@ Python 3.10.9
 ## Features ✨
 
 - **Drag and Drop PDF Upload** 📂: Effortlessly upload multiple PDF files for merging. You can also reorder the files by simply dragging and dropping.
-- 
-  ![image](https://github.com/lookmhen/combinepdf/assets/29670155/d60c912a-321d-4d50-8070-42204373f1a4)
   
+  ![image](https://github.com/lookmhen/combinepdf/assets/29670155/d60c912a-321d-4d50-8070-42204373f1a4)
+
 - **Automatic Cleanup** 🧹: Temporary files are automatically cleaned up after a set period, ensuring efficient resource management.
 - **Unique Session Management** 🔒: Secure tokens are used for managing sessions, enhancing user privacy.
 - **PDF Merging** 📎: Utilizes the powerful PyPDF2 library for seamless merging of PDF files.
