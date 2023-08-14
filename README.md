@@ -14,7 +14,7 @@ Python 3.10.9
 
 ## Features
 
-- Upload multiple PDF files for merging.
+- Drag and Drop fileUpload multiple PDF files for merging.
 - Automatic cleanup of temporary files after a certain period.
 - Unique session management using secure tokens.
 - PDF merging using PyPDF2 library.
