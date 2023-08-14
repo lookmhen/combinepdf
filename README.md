@@ -11,23 +11,6 @@ Clone or download this repository to your local machine.
 
 Open a terminal or command prompt and navigate to the project directory:
 
-
-cd pdf-merger-webapp
-Create a virtual environment to keep your project dependencies isolated:
-
-python -m venv venv
-Activate the virtual environment:
-
-On macOS or Linux:
-source venv/bin/activate
-
-
-On Windows:
-venv\Scripts\activate
-Install the required dependencies:
-
-
-
 pip install -r requirements.txt
 Usage
 Start the Flask development server:
