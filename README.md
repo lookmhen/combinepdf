@@ -7,6 +7,27 @@ Welcome to the PDF Merger web app, where you can easily merge your PDF files wit
 ## Test Environment 🧪
 Python 3.10.9
 
+## Access From Any Device 🌐
+
+The PDF Merger Web Application is designed to be accessible from any device connected to the same network. This means you can easily use the application from your computer, tablet, or even your smartphone.
+
+### Steps to Access:
+
+1. Ensure that the machine running the PDF Merger Web Application is connected to a network (local or external).
+
+2. Find out the IP address or hostname of the machine. You can often find this information in your system settings or by running the appropriate command in your terminal/command prompt.
+
+3. Open a web browser on the device you want to use to access the application.
+
+4. In the address bar of the web browser, enter the IP address or hostname followed by the port number (default: `8080`). For example: `http://192.168.1.100:8080`.
+
+5. You should now see the PDF Merger Web Application interface in your browser. You can upload, merge, and manage your PDF files just like you would on the machine running the application.
+
+Please note that for remote access over the internet, you might need to configure your network settings and firewall rules accordingly for security.
+
+Enjoy the convenience of accessing and using the PDF Merger Web Application from any device on your network!
+
+
 ## Features ✨
 
 - **Drag and Drop PDF Upload** 📂: Effortlessly upload multiple PDF files for merging. You can also reorder the files by simply dragging and dropping.
