@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <div class="toggle">
+        <input type="checkbox" id="night-mode" />
+        <div class="slider"></div>
+    </div>
+    <label class="toggle-label" for="night-mode">Night Mode</label>
     <title>PDF Merger</title>
     <style>
         body {
@@ -10,6 +15,114 @@
             margin: 0;
             padding: 20px;
         }
+
+        /* Add Night Mode Styles */
+            body.night-mode {
+            background-color: #222;
+            color: #fff;
+        }
+
+        body.night-mode #drop-area {
+            background-color: #444;
+            border-color: #888;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        body.night-mode .file-entry {
+            background-color: #fff;
+            color: #333; /* Specify the desired text color for file entries */
+            border-left: 2px solid #ffc0cb;
+            box-shadow: 0 2px 5px rgba(255, 192, 203, 0.3);
+        }
+
+        /* Add Moon Icon Styles */
+        #night-mode-label::before {
+            content: '\1F319'; /* Unicode character for moon symbol */
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+                /* Add Toggle Switch Styles */
+        #night-mode {
+            display: none;
+        }
+
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        #night-mode:checked + .slider {
+            background-color: #2b2b2b;
+        }
+
+        #night-mode:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-label {
+            margin-left: 10px;
+            font-size: 16px;
+            user-select: none;
+        }
+
+        /* Add Moon Icon Styles */
+        .toggle-label::before {
+            content: '\1F319'; /* Unicode character for moon symbol */
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+        /* Add Night Mode Styles */
+        body.night-mode {
+            background-color: #222;
+            color: #fff;
+        }
+
+        body.night-mode #drop-area {
+            background-color: #444;
+            border-color: #888;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+/* Add more night mode styles as needed */
+
+
+
+        /* Add more night mode styles as needed */
+
 
         #drop-area {
             border: 2px dashed #ffc0cb;
@@ -105,7 +218,7 @@
 			  font-size: 12px;
 			  text-align: center;
 			  line-height: 24px;
-			  transform: rotate(0deg);
+			  transform: rotate(45deg);
 			}
 			
 			
@@ -130,13 +243,15 @@
 		  font-size: px;
 		  line-height:1;
         }
+        
 
 		
     </style>
 </head>
 <body>
     <h1>PDF Merger</h1>
-
+    
+    
     <div id="drop-area" ondblclick="browseFiles()">
         <p>Drag and drop PDF files here OR Double Click for Browse File</p>
 		<p>Or<p>
@@ -148,10 +263,30 @@
     <div id="move-description" style=font-size:20px>Can change the sequence of files by dragging and dropping them</div>
     
     <form id="merge-form" action="/merge" method="POST">
-        <input type="submit" id="merge-button" value="Merge Files &#127800;" class="merge-button">
+        <input type="submit" id="merge-button" value="Merge Files &#127800;" class="merge-button"style="color:#333;font-family: 'Arial', sans-serif;">
     </form>
     
     <script>
+
+    // JavaScript for Night Mode Toggle
+    var nightModeCheckbox = document.getElementById('night-mode');
+    var nightModeLabel = document.getElementById('night-mode-label');
+
+    nightModeCheckbox.addEventListener('change', function () {
+        document.body.classList.toggle('night-mode', this.checked);
+    });
+
+    // Check the night mode preference if saved
+    var nightModePreference = localStorage.getItem('nightModePreference');
+    if (nightModePreference === 'true') {
+        nightModeCheckbox.checked = true;
+        document.body.classList.add('night-mode');
+    }
+
+    // Save night mode preference
+    nightModeCheckbox.addEventListener('change', function () {
+        localStorage.setItem('nightModePreference', this.checked);
+    });
 
 	
     var fileList = [];
