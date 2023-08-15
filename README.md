@@ -27,20 +27,6 @@ Please note that for remote access over the internet, you might need to configur
 
 Enjoy the convenience of accessing and using the PDF Merger Web Application from any device on your network!
 
-## Features ✨
-
-- **Drag and Drop PDF Upload** 📂: Effortlessly upload multiple PDF files for merging. You can also reorder the files by simply dragging and dropping.
-
-  ![Drag and Drop PDF Upload](/path/to/drag-and-drop-image.png) <!-- Add an image demonstrating the feature -->
-
-- **Automatic Cleanup** 🧹: Temporary files are automatically cleaned up after a set period, ensuring efficient resource management.
-
-- **Unique Session Management** 🔒: Secure tokens are used for managing sessions, enhancing user privacy.
-
-- **PDF Merging** 📎: Utilizes the powerful PyPDF2 library for seamless merging of PDF files.
-
-- **Basic Error Handling and Logging** 🛠️: Errors are managed gracefully, and logs provide insight into application behavior.
-
 
 ## Features ✨
 
