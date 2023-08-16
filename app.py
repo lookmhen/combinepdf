@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 
-@app.route('/')
+@app.route('/merge/')
 def home():
     return render_template('index.html')
 
@@ -129,11 +129,12 @@ def start_server():
     Start the Waitress server.
     """
     host = socket.gethostbyname(socket.gethostname())
-    port = int(os.environ.get('PORT', 8080))
+    port = int(os.environ.get('PORT', 80))
 
     ensure_temp_directory_exists()
 
-    logger.info("Starting the server on %s:%d", host, port)
+    logger.info("Starting the Mergepdf server on %s:%d%s", host, port, '/merge')
+
     serve(app, host=host, port=port)
 
 if __name__ == '__main__':
