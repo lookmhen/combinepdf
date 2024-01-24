@@ -20,7 +20,7 @@ The PDF Merger Web Application is designed to be accessible from any device conn
 
 3. Open a web browser on the device you want to use to access the application.
 
-4. In the address bar of the web browser, enter the IP address or hostname followed by the port number (default: `8080`). For example: `http://192.168.1.100:8080`.
+4. In the address bar of the web browser, enter the IP address or hostname followed by the port number (default: `80`). For example: `http://192.168.1.100:80`.
 
 5. You should now see the PDF Merger Web Application interface in your browser. You can upload, merge, and manage your PDF files just like you would on the machine running the application.
 
