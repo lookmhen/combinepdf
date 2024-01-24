@@ -1,14 +1,14 @@
 
     // JavaScript for Night Mode Toggle
-    var nightModeCheckbox = document.getElementById('night-mode');
-    var nightModeLabel = document.getElementById('night-mode-label');
+    let nightModeCheckbox = document.getElementById('night-mode');
+    let nightModeLabel = document.getElementById('night-mode-label');
 
     nightModeCheckbox.addEventListener('change', function () {
         document.body.classList.toggle('night-mode', this.checked);
     });
 
     // Check the night mode preference if saved
-    var nightModePreference = localStorage.getItem('nightModePreference');
+    let nightModePreference = localStorage.getItem('nightModePreference');
     if (nightModePreference === 'true') {
         nightModeCheckbox.checked = true;
         document.body.classList.add('night-mode');
@@ -20,12 +20,12 @@
     });
 
 	
-    var fileList = [];
-    var dropArea = document.getElementById('drop-area');
-    var fileListContainer = document.getElementById('file-list');
-    var moveDescription = document.getElementById('move-description');
-    var mergeForm = document.getElementById('merge-form');
-    var draggedIndex;
+    let fileList = [];
+    let dropArea = document.getElementById('drop-area');
+    let fileListContainer = document.getElementById('file-list');
+    let moveDescription = document.getElementById('move-description');
+    let mergeForm = document.getElementById('merge-form');
+    let draggedIndex;
 
     function handleFileUpload(file) {
     if (file.type !== 'application/pdf') {
@@ -44,7 +44,7 @@
     }
 
     function swapFiles(index1, index2) {
-        var temp = fileList[index1];
+        let temp = fileList[index1];
         fileList[index1] = fileList[index2];
         fileList[index2] = temp;
         renderFileList();
@@ -53,7 +53,7 @@
     function renderFileList() {
     fileListContainer.innerHTML = '';
     fileList.forEach(function(file, index) {
-        var fileEntry = document.createElement('div');
+        let fileEntry = document.createElement('div');
         fileEntry.className = 'file-entry';
         fileEntry.setAttribute('draggable', true);
         fileEntry.addEventListener('dragstart', function(e) {
@@ -76,10 +76,10 @@
             swapFiles(draggedIndex, index);
         });
 
-        var fileNumber = document.createElement('span');
+        let fileNumber = document.createElement('span');
 		fileNumber.className = 'file-number';
 
-		var star = document.createElement('span');
+		let star = document.createElement('span');
 		star.className = 'star';
 		star.textContent = index + 1;
 
@@ -88,11 +88,11 @@
 
 
 
-        var fileName = document.createElement('span');
+        let fileName = document.createElement('span');
         fileName.className = 'file-name';
         fileName.textContent = file.name;
 
-        var removeButton = document.createElement('button');
+        let removeButton = document.createElement('button');
         removeButton.className = 'remove-file';
         removeButton.textContent = 'Remove';
         removeButton.addEventListener('click', function() {
@@ -110,16 +110,14 @@
 
 
 
-
-
     function browseFiles() {
-        var fileInput = document.createElement('input');
+        let fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.multiple = true;
         fileInput.accept = '.pdf';
         fileInput.addEventListener('change', function(e) {
-            var files = e.target.files;
-            for (var i = 0; i < files.length; i++) {
+            let files = e.target.files;
+            for (let i = 0; i < files.length; i++) {
                 handleFileUpload(files[i]);
             }
         });
@@ -145,8 +143,8 @@
         dropArea.style.backgroundColor = '#fff';
         dropArea.style.border = '2px dashed #ffc0cb';
         dropArea.style.boxShadow = '0 2px 5px rgba(255, 192, 203, 0.3)';
-        var files = e.dataTransfer.files;
-        for (var i = 0; i < files.length; i++) {
+        let files = e.dataTransfer.files;
+        for (let i = 0; i < files.length; i++) {
             handleFileUpload(files[i]);
         }
     });
@@ -160,17 +158,17 @@
             return;
         }
     
-        var mergeButton = document.getElementById('merge-button');
+        let mergeButton = document.getElementById('merge-button');
     
         // Store the original text
-        var originalText = mergeButton.value;
+        let originalText = mergeButton.value;
     
         // Disable the merge button and change the text
         mergeButton.disabled = true;
         mergeButton.value = 'Merging...';
     
-        var formData = new FormData();
-        for (var i = 0; i < fileList.length; i++) {
+        let formData = new FormData();
+        for (let i = 0; i < fileList.length; i++) {
             formData.append('files[]', fileList[i]);
         }
     
@@ -180,8 +178,8 @@
         })
         .then(response => response.blob())
         .then(blob => {
-            var url = window.URL.createObjectURL(blob);
-            var a = document.createElement('a');
+            let url = window.URL.createObjectURL(blob);
+            let a = document.createElement('a');
             a.href = url;
             a.download = 'merged.pdf';
             a.click();
