@@ -1,4 +1,4 @@
-![image](https://github.com/lookmhen/combinepdf/assets/29670155/5ec102ca-9cf0-435b-92dd-6b6dc681698b)
+![image](https://github.com/lookmhen/combinepdf/assets/29670155/d8edfacb-e720-4e64-9686-450f3a379bd2)
 
 
 # PDF Merger Web Application 📚🔗
@@ -38,14 +38,13 @@ Enjoy the convenience of accessing and using the PDF Merger Web Application from
 - **Automatic Cleanup** 🧹: Temporary files are automatically cleaned up after a set period, ensuring efficient resource management.
 - **Unique Session Management** 🔒: Secure tokens are used for managing sessions, enhancing user privacy.
 - **PDF Merging** 📎: Utilizes the powerful PyPDF2 library for seamless merging of PDF files.
-- **Basic Error Handling and Logging** 🛠️: Errors are managed gracefully, and logs provide insight into application behavior.
 
 ## Getting Started 🚀
 
 1. Clone this repository to your local machine.
 2. Install the required dependencies using `pip install -r requirements.txt`.
 3. Run the application using `python app.py` or `start.cmd`.
-4. Access the application in your web browser at `http://localhost:8080`.
+4. Access the application in your web browser at `http://localhost/merge`or http://hostname/merge/.
 
 ## Usage 📝
 
