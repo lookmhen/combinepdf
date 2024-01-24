@@ -38,14 +38,13 @@ Enjoy the convenience of accessing and using the PDF Merger Web Application from
 - **Automatic Cleanup** 🧹: Temporary files are automatically cleaned up after a set period, ensuring efficient resource management.
 - **Unique Session Management** 🔒: Secure tokens are used for managing sessions, enhancing user privacy.
 - **PDF Merging** 📎: Utilizes the powerful PyPDF2 library for seamless merging of PDF files.
-- **Basic Error Handling and Logging** 🛠️: Errors are managed gracefully, and logs provide insight into application behavior.
 
 ## Getting Started 🚀
 
 1. Clone this repository to your local machine.
 2. Install the required dependencies using `pip install -r requirements.txt`.
 3. Run the application using `python app.py` or `start.cmd`.
-4. Access the application in your web browser at `http://localhost:8080`.
+4. Access the application in your web browser at `http://localhost/merge`or http://hostname/merge/.
 
 ## Usage 📝
 
