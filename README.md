@@ -6,7 +6,7 @@
 Welcome to the PDF Merger web app, where you can easily merge your PDF files with simplicity and convenience! 🚀
 
 ## Test Environment 🧪
-Python 3.10.9
+Python 3.12
 
 ## Access From Any Device 🌐
 
