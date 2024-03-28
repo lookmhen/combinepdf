@@ -1,2 +1,3 @@
-combine-venv/
-*.pdf
+/temp/
+/venv/
+/backup/
