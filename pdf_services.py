@@ -327,23 +327,43 @@ def add_watermark(file_path: str, output_path: str, watermark_config: dict, imag
         logger.error(f"Error adding watermark: {e}")
         raise
 
-def compress_pdf(file_path: str, output_path: str) -> str:
+def compress_pdf(file_path: str, output_path: str, dpi: int = 72, quality: int = 40) -> str:
     """
-    Compress PDF using PyMuPDF optimization.
+    Compress PDF by re-rendering pages at lower DPI and quality.
     
     Args:
         file_path: Path to input PDF.
         output_path: Path to save output.
+        dpi: Target DPI for rendering (default 72).
+        quality: JPEG quality 1-100 (default 40, lower = smaller).
         
     Returns:
         Path to output file.
     """
+    from PIL import Image
+    import io
+    
     try:
-        doc = fitz.open(file_path)
+        src_doc = fitz.open(file_path)
+        out_doc = fitz.open()
         
-        # garbage=4: Check for identical objects and remove them.
-        # deflate=True: Compress streams.
-        doc.save(output_path, garbage=4, deflate=True)
+        zoom = dpi / 72.0
+        mat = fitz.Matrix(zoom, zoom)
+        
+        for page in src_doc:
+            pix = page.get_pixmap(matrix=mat)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            
+            img_buffer = io.BytesIO()
+            img.save(img_buffer, format="JPEG", quality=quality, optimize=True)
+            img_bytes = img_buffer.getvalue()
+            
+            new_page = out_doc.new_page(width=page.rect.width, height=page.rect.height)
+            new_page.insert_image(new_page.rect, stream=img_bytes)
+        
+        src_doc.close()
+        out_doc.save(output_path, garbage=4, deflate=True)
+        out_doc.close()
         
         logger.info(f"Compressed PDF saved to {output_path}")
         return output_path

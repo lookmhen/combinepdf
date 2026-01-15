@@ -4,113 +4,370 @@
 {% block page_title %}Compress PDF{% endblock %}
 
 {% block content %}
-<div class="tool-container">
+<div class="tool-container fade-in">
     <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
-        Reduce your PDF file size while maintaining quality.
+        Reduce your PDF file size while maintaining high quality. Great for emails and uploads!
     </p>
 
     <!-- Upload Area -->
-    <div id="drop-area" class="upload-area">
+    <div id="drop-area" class="upload-box">
         <div class="upload-icon">🗜️</div>
-        <h3>Drag & Drop PDF to Compress</h3>
-        <p style="color: var(--text-muted);">or click to browse</p>
-        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+        <h3>Select PDF Files</h3>
+        <p style="color: var(--text-muted); margin-bottom: 0;">Drag & drop or click to browse (Multiple files supported)
+        </p>
+        <input type="file" id="file-input" accept=".pdf" multiple style="display: none;">
     </div>
 
     <!-- File Info (Hidden initially) -->
-    <div id="file-info" style="display: none; text-align: center; margin-bottom: 2rem;">
-        <p style="font-weight: 600; font-size: 1.2rem;">Selected: <span id="filename"></span></p>
+    <div id="file-info-container" style="display: none; width: 100%; max-width: 600px; margin: 2rem auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4 style="margin: 0;">Selected Files (<span id="file-count">0</span>)</h4>
+            <button id="clear-all-btn" class="btn-text" style="color: var(--danger); font-size: 0.9rem;">Clear
+                All</button>
+        </div>
+        <div id="file-list"
+            style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">
+        </div>
+    </div>
+
+    <!-- Compression Level Selector -->
+    <div id="level-selector" style="display: none; width: 100%; max-width: 600px; margin: 1rem auto;">
+        <h4 style="margin-bottom: 1rem;">Compression Level</h4>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <label class="level-card">
+                <input type="radio" name="comp-level" value="extreme" style="display: none;">
+                <div class="card-inner">
+                    <span class="level-icon">🔥</span>
+                    <span class="level-title">Extreme</span>
+                    <span class="level-desc">Maximum compression</span>
+                </div>
+            </label>
+            <label class="level-card">
+                <input type="radio" name="comp-level" value="recommended" checked style="display: none;">
+                <div class="card-inner">
+                    <span class="level-icon">⭐</span>
+                    <span class="level-title">Recommended</span>
+                    <span class="level-desc">Balanced quality</span>
+                </div>
+            </label>
+            <label class="level-card">
+                <input type="radio" name="comp-level" value="less" style="display: none;">
+                <div class="card-inner">
+                    <span class="level-icon">✨</span>
+                    <span class="level-title">Less</span>
+                    <span class="level-desc">Higher quality</span>
+                </div>
+            </label>
+        </div>
     </div>
 
     <!-- Action Bar -->
-    <div class="action-bar">
-        <button id="compress-btn" class="btn-primary" disabled>
-            Compress PDF 📉
+    <div class="action-bar header-actions" style="justify-content: center; margin-top: 2rem;">
+        <button id="compress-btn" class="btn-primary" disabled
+            style="min-width: 200px; padding: 1rem 2rem; font-size: 1.1rem;">
+            Compress Files 📉
         </button>
     </div>
 </div>
 
+<!-- Processing Overlay -->
+<div id="processing-overlay" class="overlay">
+    <div class="processing-card">
+        <div class="spinner"></div>
+        <h3>Compressing PDFs...</h3>
+        <p id="process-status">Analysis in progress</p>
+    </div>
+</div>
+
+<style>
+    .upload-box {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-lg);
+        padding: 4rem 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-card);
+    }
+
+    .upload-box:hover,
+    .upload-box.drag-active {
+        border-color: var(--primary);
+        background: var(--bg-hover);
+        transform: translateY(-2px);
+    }
+
+    .upload-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        animation: slideUp 0.3s ease;
+    }
+
+    .file-item .icon {
+        font-size: 1.5rem;
+    }
+
+    .file-item .details {
+        flex: 1;
+        text-align: left;
+        overflow: hidden;
+    }
+
+    .file-item .name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 500;
+    }
+
+    .file-item .size {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .btn-text {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .btn-text:hover {
+        text-decoration: underline;
+    }
+
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .processing-card {
+        background: var(--bg-card);
+        padding: 2rem 3rem;
+        border-radius: var(--radius-lg);
+        text-align: center;
+        box-shadow: var(--shadow-xl);
+        border: 1px solid var(--border);
+        transform: scale(0.9);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .overlay.active .processing-card {
+        transform: scale(1);
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid var(--border);
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        margin: 0 auto 1.5rem auto;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Level Cards */
+    .level-card {
+        flex: 1;
+        min-width: 140px;
+        cursor: pointer;
+        border: 2px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 0.75rem;
+        transition: all 0.2s;
+        background: var(--bg-card);
+    }
+
+    .level-card .card-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .level-icon {
+        font-size: 1.5rem;
+    }
+
+    .level-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .level-desc {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .level-card:hover {
+        border-color: var(--primary);
+        background: var(--bg-hover);
+    }
+
+    label:has(input[name="comp-level"]:checked) {
+        border-color: var(--primary);
+        background: color-mix(in srgb, var(--primary) 10%, transparent);
+        box-shadow: 0 0 0 1px var(--primary);
+    }
+</style>
+
 <script>
-    let currentFile = null;
+    let selectedFiles = [];
     const dropArea = document.getElementById('drop-area');
     const fileInput = document.getElementById('file-input');
-    const fileInfo = document.getElementById('file-info');
-    const filenameSpan = document.getElementById('filename');
+    const fileInfoContainer = document.getElementById('file-info-container');
+    const fileList = document.getElementById('file-list');
+    const fileCountSpan = document.getElementById('file-count');
+    const clearAllBtn = document.getElementById('clear-all-btn');
     const compressBtn = document.getElementById('compress-btn');
+    const overlay = document.getElementById('processing-overlay');
+    const statusText = document.getElementById('process-status');
+    const levelSelector = document.getElementById('level-selector');
 
-    // -- File Handling --
     dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFiles(e.target.files); });
 
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) handleFile(e.target.files[0]);
-    });
-
-    dropArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropArea.classList.add('drag-active');
-    });
-
+    dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('drag-active'); });
     dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
-
     dropArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropArea.classList.remove('drag-active');
-        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        e.preventDefault(); dropArea.classList.remove('drag-active');
+        if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
     });
 
-    function handleFile(file) {
-        if (file.type !== 'application/pdf') {
-            alert('Please select a PDF file');
+    clearAllBtn.addEventListener('click', () => { selectedFiles = []; updateUI(); fileInput.value = ''; });
+
+    function handleFiles(files) {
+        for (let file of files) {
+            if (file.type === 'application/pdf') selectedFiles.push(file);
+        }
+        updateUI();
+    }
+
+    function removeFile(index) { selectedFiles.splice(index, 1); updateUI(); }
+
+    function updateUI() {
+        fileList.innerHTML = '';
+        fileCountSpan.innerText = selectedFiles.length;
+
+        if (selectedFiles.length === 0) {
+            fileInfoContainer.style.display = 'none';
+            levelSelector.style.display = 'none';
+            dropArea.style.display = 'block';
+            compressBtn.disabled = true;
             return;
         }
-        currentFile = file;
-        filenameSpan.innerText = file.name;
+
         dropArea.style.display = 'none';
-        fileInfo.style.display = 'block';
+        fileInfoContainer.style.display = 'block';
+        levelSelector.style.display = 'block';
         compressBtn.disabled = false;
+
+        selectedFiles.forEach((file, index) => {
+            const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.innerHTML = `
+                <div class="icon">📄</div>
+                <div class="details">
+                    <div class="name">${file.name}</div>
+                    <div class="size">${size}</div>
+                </div>
+                <button onclick="removeFile(${index})" class="btn-text" style="color: var(--text-muted); font-size: 1.2rem;">✖</button>
+            `;
+            fileList.appendChild(item);
+        });
     }
 
     compressBtn.addEventListener('click', async () => {
-        if (!currentFile) return;
+        if (selectedFiles.length === 0) return;
 
-        const originalText = compressBtn.innerText;
-        compressBtn.innerText = 'Compressing... ⏳';
-        compressBtn.disabled = true;
+        overlay.classList.add('active');
+        const phrases = ["Uploading Files...", "Analyzing Batch...", "Compressing...", "Optimizing...", "Zipping Results..."];
+        let phraseIdx = 0;
+        const interval = setInterval(() => {
+            if (phraseIdx < phrases.length) { statusText.innerText = phrases[phraseIdx]; phraseIdx++; }
+        }, 800);
 
         const formData = new FormData();
-        formData.append('file', currentFile);
+        selectedFiles.forEach(file => formData.append('files[]', file));
+        const levelRadio = document.querySelector('input[name="comp-level"]:checked');
+        formData.append('level', levelRadio ? levelRadio.value : 'recommended');
 
         try {
-            const res = await fetch('/compress', {
-                method: 'POST',
-                body: formData
-            });
-
+            const res = await fetch('/compress', { method: 'POST', body: formData });
             if (res.ok) {
-                // Get compression ratio from header if available
                 const ratio = res.headers.get('X-Compression-Ratio');
-                if (ratio) {
-                    alert(`Success! File compressed by ${ratio}%`);
-                }
-
                 const blob = await res.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'compressed_' + currentFile.name;
+                a.download = selectedFiles.length > 1 ? 'compressed_batch.zip' : 'compressed_' + selectedFiles[0].name;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
+                clearInterval(interval);
+                statusText.innerText = ratio ? `Done! Saved ${ratio}%` : "Done! Downloading...";
+                setTimeout(() => { overlay.classList.remove('active'); }, 1500);
             } else {
-                const err = await res.json();
-                alert('Error: ' + err.error);
+                clearInterval(interval);
+                const err = await res.json().catch(() => ({}));
+                alert('Error: ' + (err.error || "Unknown"));
+                overlay.classList.remove('active');
             }
         } catch (e) {
             console.error(e);
-            alert('Error compressing file');
-        } finally {
-            compressBtn.innerText = originalText;
-            compressBtn.disabled = false;
+            clearInterval(interval);
+            alert('Error compressing files');
+            overlay.classList.remove('active');
         }
     });
 </script>

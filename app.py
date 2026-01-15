@@ -382,48 +382,87 @@ def compress_page():
 
 @app.route('/compress', methods=['POST'])
 def compress():
-    """Compress PDF."""
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+    """Compress PDF(s)."""
+    uploaded_files = request.files.getlist("files[]")
+    if not uploaded_files:
+        if 'file' in request.files:
+            uploaded_files = [request.files['file']]
+        else:
+             return jsonify({"error": "No files uploaded"}), 400
     
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No file selected"}), 400
+    if not uploaded_files or uploaded_files[0].filename == '':
+        return jsonify({"error": "No files selected"}), 400
         
-    saved_path = None
-    output_path = None
+    saved_paths = []
+    compressed_paths = []
     
     try:
-        original_name = secure_filename(file.filename)
-        temp_filename = f"comp_in_{secrets.token_hex(8)}_{original_name}"
-        saved_path = utils.get_temp_path(temp_filename)
-        file.save(saved_path)
+        level = request.form.get('level', 'recommended')
+        level_settings = {
+            'extreme': (50, 20),
+            'recommended': (72, 40),
+            'less': (100, 60)
+        }
+        dpi, quality = level_settings.get(level, (72, 40))
+        logger.info(f"Compression level: {level} (DPI={dpi}, Quality={quality})")
         
-        output_filename = f"compressed_{original_name}"
-        output_path = utils.get_temp_path(output_filename)
+        for file in uploaded_files:
+            if file and file.filename.lower().endswith('.pdf'):
+                original_name = secure_filename(file.filename)
+                temp_filename = f"comp_in_{secrets.token_hex(4)}_{original_name}"
+                saved_path = utils.get_temp_path(temp_filename)
+                file.save(saved_path)
+                saved_paths.append((saved_path, original_name))
+
+        if not saved_paths:
+             return jsonify({"error": "No valid PDF files found"}), 400
+
+        total_original_size = 0
+        total_new_size = 0
         
-        # Compress
-        pdf_services.compress_pdf(saved_path, output_path)
-        
-        # Calculate savings
-        original_size = os.path.getsize(saved_path)
-        new_size = os.path.getsize(output_path)
-        saving_pct = 0
-        if original_size > 0:
-            saving_pct = round((1 - (new_size / original_size)) * 100, 1)
+        for input_path, original_name in saved_paths:
+            output_filename = f"compressed_{original_name}"
+            output_path = utils.get_temp_path(f"comp_out_{secrets.token_hex(4)}_{original_name}")
             
-        logger.info(f"Compressed: {original_size} -> {new_size} ({saving_pct}%)")
-        
-        response = send_file(output_path, as_attachment=True, download_name=output_filename)
-        response.headers["X-Compression-Ratio"] = str(saving_pct)
-        return response
+            pdf_services.compress_pdf(input_path, output_path, dpi=dpi, quality=quality)
+            compressed_paths.append((output_path, output_filename))
+            
+            total_original_size += os.path.getsize(input_path)
+            total_new_size += os.path.getsize(output_path)
+
+        saving_pct = 0
+        if total_original_size > 0:
+            saving_pct = round((1 - (total_new_size / total_original_size)) * 100, 1)
+        logger.info(f"Batch Compress: {total_original_size} -> {total_new_size} ({saving_pct}%)")
+
+        if len(compressed_paths) == 1:
+            out_path, out_name = compressed_paths[0]
+            response = send_file(out_path, as_attachment=True, download_name=out_name)
+            response.headers["X-Compression-Ratio"] = str(saving_pct)
+            return response
+        else:
+            zip_filename = f"compressed_files_{secrets.token_hex(4)}.zip"
+            zip_path = utils.get_temp_path(zip_filename)
+            
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                for path, name in compressed_paths:
+                    zipf.write(path, name)
+            
+            response = send_file(zip_path, as_attachment=True, download_name=zip_filename)
+            response.headers["X-Compression-Ratio"] = str(saving_pct)
+            return response
         
     except Exception as e:
         logger.error(f"Compress error: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
-        if saved_path and os.path.exists(saved_path):
-            os.remove(saved_path)
+        for path, _ in saved_paths:
+            if os.path.exists(path):
+                os.remove(path)
+        if len(compressed_paths) > 1:
+            for path, _ in compressed_paths:
+                if os.path.exists(path):
+                    os.remove(path)
 
 
 def start_server():
