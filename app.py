@@ -340,16 +340,30 @@ def watermark():
     saved_path = None
     output_path = None
     
+    saved_path = None
+    output_path = None
+    image_path = None # Initialize image_path here
+    
     try:
         original_name = secure_filename(file.filename)
         temp_filename = f"wm_in_{secrets.token_hex(8)}_{original_name}"
         saved_path = utils.get_temp_path(temp_filename)
-        file.save(saved_path)
+        file.save(saved_path) # Save the main PDF file
+        
+        config = json.loads(request.form.get('config', '{}'))
+        
+        # Handle Image Upload if present
+        if 'image_file' in request.files:
+            img_file = request.files['image_file']
+            if img_file.filename != '':
+                img_name = secure_filename(img_file.filename)
+                image_path = utils.get_temp_path(f"wm_img_{secrets.token_hex(4)}_{img_name}")
+                img_file.save(image_path)
         
         output_filename = f"watermarked_{secrets.token_hex(4)}_{original_name}"
         output_path = utils.get_temp_path(output_filename)
         
-        pdf_services.add_watermark(saved_path, output_path, config)
+        pdf_services.add_watermark(saved_path, output_path, config, image_path)
         
         return send_file(output_path, as_attachment=True, download_name=output_filename)
         
@@ -359,6 +373,8 @@ def watermark():
     finally:
         if saved_path and os.path.exists(saved_path):
             os.remove(saved_path)
+        if image_path and os.path.exists(image_path):
+            os.remove(image_path)
 
 @app.route('/compress')
 def compress_page():

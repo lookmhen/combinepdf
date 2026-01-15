@@ -22,32 +22,118 @@
 
         <!-- Controls -->
         <div class="controls-card"
-            style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; background: var(--bg-card); padding: 1rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
-            <div style="flex: 1; min-width: 200px;">
+            style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: start; background: var(--bg-card); padding: 1rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
+
+            <!-- Mode Selection -->
+            <div style="width: 100%; display: flex; gap: 1rem; margin-bottom: 1rem;">
+                <label class="mode-card">
+                    <input type="radio" name="wm-mode" value="text" checked style="display: none;">
+                    <div class="card-content">
+                        <span style="font-size: 1.5rem;">📝</span>
+                        <span style="font-weight: bold;">Text Watermark</span>
+                    </div>
+                </label>
+                <label class="mode-card">
+                    <input type="radio" name="wm-mode" value="image" style="display: none;">
+                    <div class="card-content">
+                        <span style="font-size: 1.5rem;">🖼️</span>
+                        <span style="font-weight: bold;">Image Watermark</span>
+                    </div>
+                </label>
+            </div>
+
+            <style>
+                .mode-card {
+                    flex: 1;
+                    cursor: pointer;
+                    border: 2px solid var(--border);
+                    border-radius: var(--radius-md);
+                    padding: 0.75rem;
+                    transition: all 0.2s;
+                    background: var(--bg-card);
+                }
+
+                .mode-card .card-content {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                }
+
+                .mode-card:hover {
+                    border-color: var(--primary);
+                    background: var(--bg-hover);
+                }
+
+                /* Active State */
+                input[name="wm-mode"]:checked+.card-content {
+                    color: var(--primary);
+                }
+
+                label:has(input:checked) {
+                    border-color: var(--primary);
+                    background: color-mix(in srgb, var(--primary) 10%, transparent);
+                    box-shadow: 0 0 0 1px var(--primary);
+                }
+
+                /* Fallback for no :has support (very old browsers)? 
+                   Let's add a small script to toggle class 'active' on change just to be safe/robust.
+                */
+            </style>
+
+            <!-- Text Controls -->
+            <div id="text-controls" style="flex: 1; min-width: 200px;">
                 <label>Watermark Text</label>
                 <input type="text" id="wm-text" value="CONFIDENTIAL"
                     style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+
+                <div style="margin-top: 0.5rem;">
+                    <label>Color</label>
+                    <input type="color" id="wm-color" value="#ff0000"
+                        style="height: 38px; width: 50px; padding: 0; border: none; cursor: pointer;">
+                </div>
+            </div>
+
+            <!-- Image Controls -->
+            <div id="image-controls" style="flex: 1; min-width: 200px; display: none;">
+                <label>Upload Logo/Image</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <label for="wm-image-file" class="btn-secondary"
+                        style="cursor: pointer; padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 4px; background: #fff; display: inline-block;">
+                        📂 Choose Image
+                    </label>
+                    <span id="img-filename" style="font-size: 0.8rem; color: var(--text-muted);">No image
+                        selected</span>
+                </div>
+                <input type="file" id="wm-image-file" accept="image/*" style="display: none;">
+            </div>
+
+            <!-- Common Controls -->
+            <div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+                    <label>Size / Scale</label>
+                    <input type="number" id="val-size" value="40" min="10" max="200" style="width: 60px; padding: 2px;">
+                </div>
+                <!-- Add suffix label via JS or just simple input -->
+                <input type="range" id="wm-size" min="10" max="200" value="40" style="width: 100%;">
             </div>
 
             <div>
-                <label>Color</label>
-                <input type="color" id="wm-color" value="#ff0000"
-                    style="height: 38px; width: 50px; padding: 0; border: none; cursor: pointer;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+                    <label>Rotation (°)</label>
+                    <input type="number" id="val-rotate" value="-45" min="-180" max="180"
+                        style="width: 60px; padding: 2px;">
+                </div>
+                <input type="range" id="wm-rotate" min="-180" max="180" value="-45" style="width: 100%;">
             </div>
 
             <div>
-                <label>Size: <span id="size-val">40</span>px</label>
-                <input type="range" id="wm-size" min="10" max="200" value="40">
-            </div>
-
-            <div>
-                <label>Rotation: <span id="rotate-val">-45</span>°</label>
-                <input type="range" id="wm-rotate" min="-180" max="180" value="-45">
-            </div>
-
-            <div>
-                <label>Opacity: <span id="opacity-val">0.5</span></label>
-                <input type="range" id="wm-opacity" min="0.1" max="1.0" step="0.1" value="0.5">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+                    <label>Opacity</label>
+                    <input type="number" id="val-opacity" value="0.5" min="0.1" max="1.0" step="0.1"
+                        style="width: 60px; padding: 2px;">
+                </div>
+                <input type="range" id="wm-opacity" min="0.1" max="1.0" step="0.1" value="0.5" style="width: 100%;">
             </div>
         </div>
 
@@ -89,12 +175,16 @@
 
     // Watermark State
     let wmState = {
+        mode: 'text', // 'text' or 'image'
         text: "CONFIDENTIAL",
-        x: 0.5, // Percent
-        y: 0.5, // Percent
-        size: 40,
+        imgObj: null, // HTMLImageElement
+        imgFile: null, // File object for upload
+        x: 0.5,
+        y: 0.5,
+        size: 40, // font size or scale pct
         color: "#ff0000",
-        rotation: -45, // Degrees
+        rotation: -45,
+        opacity: 0.5,
         isDragging: false
     };
 
@@ -105,13 +195,60 @@
     const dropArea = document.getElementById('drop-area');
     const fileInput = document.getElementById('file-input');
     const editorArea = document.getElementById('editor-area');
+
+    // Controls
+    const modes = document.getElementsByName('wm-mode');
+    const textControls = document.getElementById('text-controls');
+    const imageControls = document.getElementById('image-controls');
+    const imgInput = document.getElementById('wm-image-file');
+
     const inputs = {
         text: document.getElementById('wm-text'),
         color: document.getElementById('wm-color'),
+        // Sliders
         size: document.getElementById('wm-size'),
         rotate: document.getElementById('wm-rotate'),
-        opacity: document.getElementById('wm-opacity')
+        opacity: document.getElementById('wm-opacity'),
+        // Number Inputs
+        valSize: document.getElementById('val-size'),
+        valRotate: document.getElementById('val-rotate'),
+        valOpacity: document.getElementById('val-opacity')
     };
+
+    // Mode Switching
+    modes.forEach(m => m.addEventListener('change', (e) => {
+        wmState.mode = e.target.value;
+        if (wmState.mode === 'text') {
+            textControls.style.display = 'block';
+            imageControls.style.display = 'none';
+        } else {
+            textControls.style.display = 'none';
+            imageControls.style.display = 'block';
+        }
+        updateState(); // Call updateState to refresh size-val label and redraw
+    }));
+
+    // Image Input
+    imgInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            wmState.imgFile = file;
+
+            // Update filename label
+            document.getElementById('img-filename').innerText = file.name;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const img = new Image();
+                img.onload = () => {
+                    wmState.imgObj = img;
+                    draw();
+                };
+                img.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
 
     // -- File Handling --
     dropArea.addEventListener('click', () => fileInput.click());
@@ -125,7 +262,6 @@
         currentFile = file;
         dropArea.style.display = 'none';
         editorArea.style.display = 'flex';
-
         try {
             const ab = await file.arrayBuffer();
             pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise;
@@ -139,22 +275,13 @@
     async function renderPage(num) {
         const page = await pdfDoc.getPage(num);
         const viewport = page.getViewport({ scale: 1.0 });
-
-        // Adjust canvas to fit screen width if huge
         const containerWidth = document.getElementById('canvas-container').clientWidth - 40;
         renderScale = containerWidth < viewport.width ? containerWidth / viewport.width : 1.0;
-
         const scaledViewport = page.getViewport({ scale: renderScale });
-
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
-
-        // Render PDF
         await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
-
-        // Save background
         wmState.bgImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
         draw();
     }
 
@@ -164,41 +291,59 @@
         // Restore background
         ctx.putImageData(wmState.bgImage, 0, 0);
 
-        // Draw Text
         ctx.save();
-
-        ctx.font = `bold ${wmState.size}px Helvetica`;
-        ctx.fillStyle = wmState.color;
-
-        ctx.globalAlpha = wmState.opacity; // Apply opacity
-
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
 
         const x = wmState.x * canvas.width;
         const y = wmState.y * canvas.height;
 
         ctx.translate(x, y);
         ctx.rotate(wmState.rotation * Math.PI / 180);
-        ctx.fillText(wmState.text, 0, 0);
+        ctx.globalAlpha = wmState.opacity;
 
-        // Draw selection box if dragging? (Optional)
+        if (wmState.mode === 'text') {
+            ctx.font = `bold ${wmState.size}px Helvetica`;
+            ctx.fillStyle = wmState.color;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(wmState.text, 0, 0);
+        } else if (wmState.mode === 'image' && wmState.imgObj) {
+            // Draw Image
+            // Use Percentage Sizing (Robust vs Resolution)
+            // Slider value (10-200) treated as %? 
+            // Let's divide by 2 to get 5% - 100%.
+            const pct = wmState.size / 200.0;
+            const w = canvas.width * pct;
+
+            const scale = w / wmState.imgObj.width;
+            const h = wmState.imgObj.height * scale;
+
+            // Draw centered
+            ctx.drawImage(wmState.imgObj, -w / 2, -h / 2, w, h);
+        }
 
         ctx.restore();
     }
 
     // -- Event Listeners for Inputs --
-    function updateState() {
+    function updateState(e) {
+        // Did we edit a number input?
+        if (e && (e.target === inputs.valSize || e.target === inputs.valRotate || e.target === inputs.valOpacity)) {
+            // Sync Slider to Number
+            if (e.target === inputs.valSize) inputs.size.value = inputs.valSize.value;
+            if (e.target === inputs.valRotate) inputs.rotate.value = inputs.valRotate.value;
+            if (e.target === inputs.valOpacity) inputs.opacity.value = inputs.valOpacity.value;
+        } else {
+            // Default: Sync Number to Slider (if slider moved or init)
+            inputs.valSize.value = inputs.size.value;
+            inputs.valRotate.value = inputs.rotate.value;
+            inputs.valOpacity.value = inputs.opacity.value;
+        }
+
         wmState.text = inputs.text.value;
         wmState.color = inputs.color.value;
-        wmState.size = parseInt(inputs.size.value);
+        wmState.size = parseFloat(inputs.size.value); // Use float for precision?
         wmState.rotation = parseInt(inputs.rotate.value);
         wmState.opacity = parseFloat(inputs.opacity.value);
-
-        // Update display values
-        document.getElementById('size-val').innerText = wmState.size;
-        document.getElementById('rotate-val').innerText = wmState.rotation;
-        document.getElementById('opacity-val').innerText = wmState.opacity;
 
         draw();
     }
@@ -208,19 +353,12 @@
     // -- Mouse Interaction (Dragging) --
     function getPos(e) {
         const rect = canvas.getBoundingClientRect();
-        return {
-            x: (e.clientX - rect.left),
-            y: (e.clientY - rect.top)
-        };
+        return { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
     }
 
     canvas.addEventListener('mousedown', (e) => {
-        const pos = getPos(e);
-        // Simple hit test: just assume if clicking on canvas, we move the watermark
-        // Since there is only one watermark
         wmState.isDragging = true;
-
-        // update pos
+        const pos = getPos(e);
         wmState.x = pos.x / canvas.width;
         wmState.y = pos.y / canvas.height;
         draw();
@@ -234,9 +372,7 @@
         draw();
     });
 
-    window.addEventListener('mouseup', () => {
-        wmState.isDragging = false;
-    });
+    window.addEventListener('mouseup', () => { wmState.isDragging = false; });
 
     // -- Save --
     document.getElementById('save-btn').addEventListener('click', async () => {
@@ -245,11 +381,24 @@
         btn.innerText = "Applying... ⏳";
         btn.disabled = true;
 
+        let sizeToSend;
+        if (wmState.mode === 'image') {
+            // Send scale percentage (0-1) or slider raw?
+            // Backend expects 'size'. Let's send the slider raw value, 
+            // and backend will use same logic (val/200).
+            // OR better: send the calculated percentage (0.05-1.0).
+            sizeToSend = wmState.size / 200.0;
+        } else {
+            // Text Mode: Send absolute font size (points)
+            sizeToSend = wmState.size * (1 / renderScale);
+        }
+
         const config = {
+            mode: wmState.mode,
             text: wmState.text,
             x: wmState.x,
             y: wmState.y,
-            font_size: wmState.size * (1 / renderScale), // Adjust for viewport scale
+            size: sizeToSend,
             rotation: wmState.rotation,
             color: wmState.color,
             opacity: wmState.opacity
@@ -258,6 +407,10 @@
         const formData = new FormData();
         formData.append('file', currentFile);
         formData.append('config', JSON.stringify(config));
+
+        if (wmState.mode === 'image' && wmState.imgFile) {
+            formData.append('image_file', wmState.imgFile);
+        }
 
         try {
             const res = await fetch('/watermark', { method: 'POST', body: formData });
@@ -271,7 +424,8 @@
                 a.click();
                 a.remove();
             } else {
-                alert("Error saving");
+                const err = await res.json().catch(() => ({}));
+                alert("Error saving: " + (err.error || "Unknown"));
             }
         } catch (e) {
             console.error(e);

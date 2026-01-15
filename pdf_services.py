@@ -1,8 +1,9 @@
 from pypdf import PdfWriter, PdfReader
 import fitz  # PyMuPDF
 import os
+import math
 import logging
-from typing import List
+from typing import List, Tuple, Union
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -195,84 +196,131 @@ def images_to_pdf(image_paths: List[str], output_path: str) -> str:
         logger.error(f"Error converting images to PDF: {e}")
         raise
 
-def add_watermark(file_path: str, output_path: str, watermark_config: dict) -> str:
+def add_watermark(file_path: str, output_path: str, watermark_config: dict, image_path: str = None) -> str:
     """
-    Add a text watermark to a PDF.
+    Add watermark (text or image) to PDF.
     
     Args:
-        file_path: Path to input PDF.
-        output_path: Path to save output.
-        watermark_config: Dict containing:
-            - text: str
-            - x_pct: float (0-1) position percent X
-            - y_pct: float (0-1) position percent Y
-            - font_size: int
-            - rotation: int (degrees)
-            - color: str (hex "#RRGGBB")
-            - opacity: float (0-1) - Note: pymupdf verify support for text opacity, else ignore.
+        file_path: Input PDF
+        output_path: Output PDF
+        watermark_config: Config dict (text, x, y, size, rotation, etc.)
+        image_path: Path to image file for 'image' mode
     """
     try:
         doc = fitz.open(file_path)
         
-        # Parse color
-        hex_color = watermark_config.get('color', '#000000')
-        r = int(hex_color[1:3], 16) / 255.0
-        g = int(hex_color[3:5], 16) / 255.0
-        b = int(hex_color[5:7], 16) / 255.0
-        color = (r, g, b)
-        
-        text = watermark_config.get('text', 'Watermark')
-        fontsize = int(watermark_config.get('font_size', 24))
-        rotate = int(watermark_config.get('rotation', 0))
+        mode = watermark_config.get('mode', 'text')
         x_pct = float(watermark_config.get('x', 0))
         y_pct = float(watermark_config.get('y', 0))
+        rotate = int(watermark_config.get('rotation', 0))
         opacity = float(watermark_config.get('opacity', 0.5))
+        size_val = float(watermark_config.get('size', 40)) # Fontsize or Scale factor
         
-        logger.info(f"Watermark Config: Text='{text}', Color={color}, Rot={rotate}, Opacity={opacity}, Pos=({x_pct}, {y_pct})")
+        # Load image once if needed
+        img_rect = None
+        if mode == 'image' and image_path:
+            img = fitz.open(image_path)
+            # Size logic: Frontend sends "percentage of page width" (0.05 - 1.0)
+            # We calculate this later PER PAGE because pages might vary in width.
+            # Just keep the aspect ratio here.
+            img_ratio = img[0].rect.height / img[0].rect.width
         
         for page in doc:
             rect = page.rect
             x_pos = rect.width * x_pct
             y_pos = rect.height * y_pct
             
-            logger.info(f"Page Rect: {rect}, Insert Pos: ({x_pos}, {y_pos})")
-
-            logger.info(f"Page Rect: {rect}, Insert Pos: ({x_pos}, {y_pos})")
-
-            # Use standard page.insert_text with morph for rotation
-            # Calculate centered pivot point from text size
-            font = fitz.Font("helv")
-            text_width = font.text_length(text, fontsize)
-            text_height = fontsize 
-            
-            # We want visual center at (x_pos, y_pos).
-            # Text normally starts at the insertion point.
-            # So, initial insertion point (unrotated) should be:
-            start_x = x_pos - (text_width / 2)
-            start_y = y_pos + (text_height / 3) 
-            
-            # Setup Matrix for rotation
-            # User reported "Mirror" effect on angles (likely direction mismatch).
-            # Inverting the rotation to align with expectations.
-            mat = fitz.Matrix(-rotate)
-            
-            # Pivot point for the rotation should be the visual center (x_pos, y_pos)
-            pivot = fitz.Point(x_pos, y_pos)
-            
-            # Pass pivot and matrix to morph
-            page.insert_text(
-                (start_x, start_y),
-                text,
-                fontsize=fontsize,
-                color=color,
-                fontname="helv",
-                morph=(pivot, mat),
-                overlay=True,
-                fill_opacity=opacity
-            )
-
+            if mode == 'text':
+                # Text logic remains same (size_val is fontsize in points)
+                text = watermark_config.get('text', 'Watermark')
+                color = watermark_config.get('color', '#000000')
+                if color.startswith('#'):
+                    color = tuple(int(color.lstrip('#')[i:i+2], 16)/255 for i in (0, 2, 4))
+                
+                # Use standard page.insert_text with morph for rotation
+                font = fitz.Font("helv")
+                text_width = font.text_length(text, int(size_val))
+                text_height = int(size_val)
+                
+                start_x = x_pos - (text_width / 2)
+                start_y = y_pos + (text_height / 3) 
+                
+                mat = fitz.Matrix(-rotate)
+                pivot = fitz.Point(x_pos, y_pos)
+                
+                page.insert_text(
+                    (start_x, start_y),
+                    text,
+                    fontsize=int(size_val),
+                    color=color,
+                    fontname="helv",
+                    morph=(pivot, mat),
+                    overlay=True,
+                    fill_opacity=opacity
+                )
+                
+            elif mode == 'image' and image_path:
+                # Hybrid Approach:
+                # 1. Use Pixmap to apply Opacity (Pixel manipulation).
+                # 2. Save as PNG bytes.
+                # 3. Use show_pdf_page for Rotation (Robust).
+                
+                pix = fitz.Pixmap(image_path)
+                
+                # Apply Opacity if needed
+                if opacity < 1.0:
+                    try:
+                        # Ensure alpha channel exists
+                        if not pix.alpha:
+                            pix = fitz.Pixmap(fitz.csRGB, pix, 1)
+                        
+                        # Apply constant alpha mask
+                        # Use fitz.csGRAY (UPPERCASE)
+                        mask = fitz.Pixmap(fitz.csGRAY, pix.irect, False)
+                        mask.clear_with(int(255 * opacity))
+                        pix.set_alpha(mask.samples)
+                    except Exception as e:
+                        logger.warning(f"Opacity error: {e}")
+                
+                # Convert modified pixmap to PDF stream
+                img_bytes = pix.tobytes("png")
+                img_doc = fitz.open("png", img_bytes)
+                pdf_bytes = img_doc.convert_to_pdf()
+                img_doc.close()
+                src_doc = fitz.open("pdf", pdf_bytes)
+                
+                # Calculate Dimensions
+                # Original Image Aspect Ratio (from pixmap)
+                img_ratio = pix.height / pix.width if pix.width > 0 else 1.0
+                
+                # Target Width (based on page width %)
+                w = rect.width * size_val
+                h = w * img_ratio
+                
+                # Scale Correction for Rotation (Prevent Shrinking)
+                if rotate != 0:
+                    rad = math.radians(-rotate)
+                    c = abs(math.cos(rad))
+                    s = abs(math.sin(rad))
+                    
+                    w_bb = (w * c) + (h * s)
+                    h_bb = (w * s) + (h * c)
+                else:
+                    w_bb = w
+                    h_bb = h
+                
+                target_rect = fitz.Rect(
+                    x_pos - w_bb/2,
+                    y_pos - h_bb/2,
+                    x_pos + w_bb/2,
+                    y_pos + h_bb/2
+                )
+                
+                page.show_pdf_page(target_rect, src_doc, 0, rotate=-rotate)
+                src_doc.close()
             
         doc.save(output_path)
+        logger.info(f"Watermarked PDF saved to {output_path}")
         return output_path
         
     except Exception as e:

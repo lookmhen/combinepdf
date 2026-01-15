@@ -4,31 +4,186 @@
 {% block page_title %}PDF to JPG{% endblock %}
 
 {% block content %}
-<div class="tool-container">
+<div class="tool-container fade-in">
     <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
-        Convert each page of your PDF into high-quality JPG images.
+        Convert each page of your PDF into high-resolution JPG images. Only takes a few seconds!
     </p>
 
     <!-- Upload Area -->
-    <div id="drop-area" class="upload-area">
+    <div id="drop-area" class="upload-box">
         <div class="upload-icon">🖼️</div>
-        <h3>Drag & Drop PDF to Convert</h3>
-        <p style="color: var(--text-muted);">or click to browse</p>
+        <h3>Select PDF File</h3>
+        <p style="color: var(--text-muted); margin-bottom: 0;">Drag & drop or click to browse</p>
         <input type="file" id="file-input" accept=".pdf" style="display: none;">
     </div>
 
     <!-- File Info (Hidden initially) -->
-    <div id="file-info" style="display: none; text-align: center; margin-bottom: 2rem;">
-        <p style="font-weight: 600; font-size: 1.2rem;">Selected: <span id="filename"></span></p>
+    <div id="file-info" class="file-card" style="display: none;">
+        <div class="file-icon">📄</div>
+        <div class="file-details">
+            <h4 id="filename">filename.pdf</h4>
+            <p id="filesize" style="font-size: 0.8rem; color: var(--text-muted);">Ready to convert</p>
+        </div>
+        <button id="remove-btn" class="remove-action" title="Remove file">✖</button>
     </div>
 
     <!-- Action Bar -->
-    <div class="action-bar">
-        <button id="convert-btn" class="btn-primary" disabled>
-            Convert to JPGs 📸
+    <div class="action-bar header-actions" style="justify-content: center; margin-top: 2rem;">
+        <button id="convert-btn" class="btn-primary" disabled
+            style="min-width: 200px; padding: 1rem 2rem; font-size: 1.1rem;">
+            Start Conversion 🚀
         </button>
     </div>
 </div>
+
+<!-- Processing Overlay -->
+<div id="processing-overlay" class="overlay">
+    <div class="processing-card">
+        <div class="spinner"></div>
+        <h3>Converting your PDF...</h3>
+        <p id="process-status">Analysis in progress</p>
+    </div>
+</div>
+
+<style>
+    /* Upload Box Styling */
+    .upload-box {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-lg);
+        padding: 3rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-card);
+    }
+
+    .upload-box:hover,
+    .upload-box.drag-active {
+        border-color: var(--primary);
+        background: var(--bg-hover);
+    }
+
+    .upload-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    /* File Card */
+    .file-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        margin: 2rem auto;
+        max-width: 500px;
+        animation: slideUp 0.3s ease;
+    }
+
+    .file-icon {
+        font-size: 2rem;
+    }
+
+    .file-details {
+        flex: 1;
+        text-align: left;
+    }
+
+    /* Overlay */
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .processing-card {
+        background: var(--bg-card);
+        padding: 2rem 3rem;
+        border-radius: var(--radius-lg);
+        text-align: center;
+        box-shadow: var(--shadow-xl);
+        border: 1px solid var(--border);
+        transform: scale(0.9);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .overlay.active .processing-card {
+        transform: scale(1);
+    }
+
+    /* Spinner */
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid var(--border);
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        margin: 0 auto 1.5rem auto;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Remove Button */
+    .remove-action {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .remove-action:hover {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+</style>
 
 <script>
     let currentFile = null;
@@ -36,55 +191,63 @@
     const fileInput = document.getElementById('file-input');
     const fileInfo = document.getElementById('file-info');
     const filenameSpan = document.getElementById('filename');
+    const removeBtn = document.getElementById('remove-btn');
     const convertBtn = document.getElementById('convert-btn');
+    const overlay = document.getElementById('processing-overlay');
+    const statusText = document.getElementById('process-status');
 
     // -- File Handling --
     dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
 
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) handleFile(e.target.files[0]);
-    });
-
-    dropArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropArea.classList.add('drag-active');
-    });
-
+    dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('drag-active'); });
     dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
-
     dropArea.addEventListener('drop', (e) => {
         e.preventDefault();
         dropArea.classList.remove('drag-active');
-        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    removeBtn.addEventListener('click', () => {
+        currentFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        dropArea.style.display = 'block';
+        convertBtn.disabled = true;
     });
 
     function handleFile(file) {
-        if (file.type !== 'application/pdf') {
-            alert('Please select a PDF file');
-            return;
-        }
+        if (file.type !== 'application/pdf') { alert('Please select a PDF file'); return; }
         currentFile = file;
         filenameSpan.innerText = file.name;
+        document.getElementById('filesize').innerText = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+
         dropArea.style.display = 'none';
-        fileInfo.style.display = 'block';
+        fileInfo.style.display = 'flex';
         convertBtn.disabled = false;
     }
 
     convertBtn.addEventListener('click', async () => {
         if (!currentFile) return;
 
-        const originalText = convertBtn.innerText;
-        convertBtn.innerText = 'Converting... ⏳';
-        convertBtn.disabled = true;
+        // Show Overlay
+        overlay.classList.add('active');
+        const phrases = ["Uploading PDF...", "extracting Pages...", "Rendering Images...", "Creating Zip..."];
+        let phraseIdx = 0;
+
+        // Simulating progress text
+        const interval = setInterval(() => {
+            if (phraseIdx < phrases.length) {
+                statusText.innerText = phrases[phraseIdx];
+                phraseIdx++;
+            }
+        }, 800);
 
         const formData = new FormData();
         formData.append('file', currentFile);
 
         try {
-            const res = await fetch('/pdf-to-jpg', {
-                method: 'POST',
-                body: formData
-            });
+            const res = await fetch('/pdf-to-jpg', { method: 'POST', body: formData });
 
             if (res.ok) {
                 const blob = await res.blob();
@@ -95,16 +258,24 @@
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
+
+                // Keep overlay for a second to show "Done"
+                clearInterval(interval);
+                statusText.innerText = "Done! Downloading...";
+                setTimeout(() => {
+                    overlay.classList.remove('active');
+                }, 1000);
             } else {
-                const err = await res.json();
-                alert('Error: ' + err.error);
+                clearInterval(interval);
+                const err = await res.json().catch(() => ({}));
+                alert('Error: ' + (err.error || "Unknown"));
+                overlay.classList.remove('active');
             }
         } catch (e) {
             console.error(e);
+            clearInterval(interval);
             alert('Error converting file');
-        } finally {
-            convertBtn.innerText = originalText;
-            convertBtn.disabled = false;
+            overlay.classList.remove('active');
         }
     });
 </script>
