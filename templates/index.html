@@ -1,34 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <div class="toggle">
-        <input type="checkbox" id="night-mode" />
-        <div class="slider"></div>
+{% extends "base.html" %}
+
+{% block title %}Merge PDFs - PDF Suite{% endblock %}
+{% block page_title %}Merge PDFs{% endblock %}
+
+{% block content %}
+<div class="tool-container">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Combine multiple PDF files into one. Drag and drop to reorder.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-area">
+        <div class="upload-icon">📂</div>
+        <h3>Drag & Drop PDF files here</h3>
+        <p style="color: var(--text-muted);">or click to browse</p>
+        <input type="file" id="file-input" multiple accept=".pdf" style="display: none;">
     </div>
-    <label class="toggle-label" for="night-mode">Night Mode</label>
-    <title>PDF Merger</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-	
-</head>
-<body>
-    <h1>PDF Merger</h1>
-    
-    
-    <div id="drop-area" ondblclick="browseFiles()">
-        <p>Drag and drop PDF files here</p>
-		<p>Or<p>
-		<p>Double Click for Browse File</p>
-		<span class="symbol">&#128464;</span>
+
+    <!-- File List (Grid) -->
+    <div id="file-grid" class="file-grid">
+        <!-- Files will be injected here via JS -->
     </div>
-    
-    <div id="file-list"></div>
-    <div id="move-description" style=font-size:20px>Can change the sequence of files by dragging and dropping them</div>
-    
-    <form id="merge-form" action="/merge" method="POST">
-        <input type="submit" id="merge-button" value="Merge Files &#127800;" class="merge-button"style="color:#333;font-family: 'Arial', sans-serif;">
-    </form>
-    
-    
-	<script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
-</html>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button id="merge-btn" class="btn-primary" disabled>
+            Merge PDFs 🚀
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% endblock %}

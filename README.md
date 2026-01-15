@@ -1,55 +1,61 @@
-![image](https://github.com/lookmhen/combinepdf/assets/29670155/d8edfacb-e720-4e64-9686-450f3a379bd2)
+# PDF Suite 📦✨
 
+A modern, powerful, and easy-to-use web application for managing your PDF files.
+Currently features a robust **PDF Merger** with a drag-and-drop interface and visual previews.
 
-# PDF Merger Web Application 📚🔗
+> **Status**: Active Development & Modernization.
 
-Welcome to the PDF Merger web app, where you can easily merge your PDF files with simplicity and convenience! 🚀
+## Features 🚀
 
-## Test Environment 🧪
-Python 3.12
+-   **Modern "Pastel Lively" UI**: A beautiful, friendly interface that supports both **Light** and **Dark** modes through a system-aware toggle.
+-   **Visual Previews**: See thumbnails of your PDFs immediately upon dropping them, ensuring you are merging the right files.
+-   **Drag & Drop Reordering**: Easily rearrange your files by dragging the cards.
+-   **Secure & Private**: Temporary files are automatically cleaned up after 2 minutes. Unique session IDs ensure your data never overlaps with others.
+-   **Modular Backend**: Built on **Flask** and **pypdf**, ready for future expansions like Split, Rotate, and Convert.
 
-## Access From Any Device 🌐
+## Tech Stack 🛠️
 
-The PDF Merger Web Application is designed to be accessible from any device connected to the same network. This means you can easily use the application from your computer, tablet, or even your smartphone.
+-   **Backend**: Python, Flask, pypdf, Waitress
+-   **Frontend**: HTML5, Modern CSS3 (Variables, Grids), JavaScript (ES modules)
+-   **Libraries**: `pdf.js` for client-side rendering.
 
-## Features ✨
+## Getting Started 🏃‍♂️
 
-- **Drag and Drop PDF Upload** 📂: Effortlessly upload multiple PDF files for merging. You can also reorder the files by simply dragging and dropping.
-  
-  ![image](https://github.com/lookmhen/combinepdf/assets/29670155/d60c912a-321d-4d50-8070-42204373f1a4)
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/lookmhen/combinepdf.git
+    cd combinepdf
+    ```
 
-- **Automatic Cleanup** 🧹: Temporary files are automatically cleaned up after a set period, ensuring efficient resource management.
-- **Unique Session Management** 🔒: Secure tokens are used for managing sessions, enhancing user privacy.
-- **PDF Merging** 📎: Utilizes the powerful PyPDF2 library for seamless merging of PDF files.
+2.  **Set up Virtual Environment**:
+    ```bash
+    # Windows
+    python -m venv venv
+    venv\Scripts\activate
+    ```
 
-## Getting Started 🚀
+3.  **Install Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-1. Clone this repository to your local machine.
-2. Install the required dependencies using `pip install -r requirements.txt`.
-3. Run the application using `python app.py` or `start.cmd`.
-4. Access the application in your web browser at `http://localhost/merge`or `http://hostname/merge/`.
+4.  **Run the Server**:
+    ```bash
+    python app.py
+    ```
+    Access the app at `http://localhost:80/merge`
 
-## Usage 📝
+## Roadmap 🗺️
 
-1. Access the homepage and click the "Merge PDFs" button.
-2. Upload the PDF files you intend to merge.
-3. Reorder the files using drag and drop if needed.
-4. Click the "Merge" button to initiate the merging process.
-5. Download the merged PDF file.
-
-## Configuration ⚙️
-
-- The `MAX_LIFETIME` variable in `app.py` sets the maximum lifetime (in seconds) of temporary files before they're automatically removed.
+-   [x] **Merge PDF**: Combine multiple files.
+-   [ ] **Split PDF**: Extract pages or split into individual files.
+-   [ ] **Rotate PDF**: Fix orientation of scanned documents.
+-   [ ] **Convert**: Images to PDF and vice versa.
 
 ## Contributing 🤝
 
-Contributions are welcomed! If you discover a bug or have an idea for a new feature, please open an issue or submit a pull request.
-
-## Acknowledgements 🙌
-
-- This project was inspired by the need for a straightforward PDF merging solution.
-- The Flask framework and PyPDF2 library played a pivotal role in the development of this application.
+Contributions are welcome! Please feel free to open issues or submit pull requests for new features.
 
 ## License 📜
 
-This project is licensed under the [MIT License](LICENSE).
+[MIT License](LICENSE)

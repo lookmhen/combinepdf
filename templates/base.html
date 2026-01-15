@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PDF Suite{% endblock %}</title>
+    
+    <!-- Google Fonts: Outfit for Modern/Friendly feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    
+    <!-- PDF.js for thumbnails -->
+    <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs"></script>
+    <script type="module">
+        // Set worker src
+        import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
+        window.pdfjsLib = pdfjsLib;
+    </script>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <span style="font-size: 1.8rem;">📦</span>
+                <span>PDF Suite</span>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="{{ url_for('home') }}" class="nav-link {% if request.path == '/' or request.path == '/merge/' %}active{% endif %}">
+                        <span>🧩</span> Merge PDF
+                    </a>
+                </li>
+                <!-- Future Features Placeholders -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link" style="opacity: 0.5; cursor: default;">
+                        <span>✂️</span> Split (Soon)
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" style="opacity: 0.5; cursor: default;">
+                        <span>🔄</span> Rotate (Soon)
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <!-- Maybe version or minimal footer -->
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="header">
+                <h1 class="page-title">{% block page_title %}Tool{% endblock %}</h1>
+                
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Dark Mode">
+                    <span id="theme-icon">🌙</span>
+                </button>
+            </header>
+
+            <div class="content-body">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Dark Mode Logic
+        const toggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const body = document.body;
+
+        // Load preference
+        if (localStorage.getItem('nightMode') === 'true') {
+            body.classList.add('night-mode');
+            themeIcon.textContent = '☀️';
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            body.classList.toggle('night-mode');
+            const isDark = body.classList.contains('night-mode');
+            localStorage.setItem('nightMode', isDark);
+            themeIcon.textContent = isDark ? '☀️' : '🌙';
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

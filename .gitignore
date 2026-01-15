@@ -1,3 +1,22 @@
-/temp/
-/venv/
-/backup/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+.env
+
+# Flask / Web
+instance/
+.webassets-cache
+.DS_Store
+
+# Temporary Files
+temp/
+*.log
+
+# IDEs
+.vscode/
+.idea/
