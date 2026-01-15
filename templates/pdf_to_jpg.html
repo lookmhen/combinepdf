@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}PDF to JPG - PDF Suite{% endblock %}
+{% block page_title %}PDF to JPG{% endblock %}
+
+{% block content %}
+<div class="tool-container">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Convert each page of your PDF into high-quality JPG images.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-area">
+        <div class="upload-icon">🖼️</div>
+        <h3>Drag & Drop PDF to Convert</h3>
+        <p style="color: var(--text-muted);">or click to browse</p>
+        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+    </div>
+
+    <!-- File Info (Hidden initially) -->
+    <div id="file-info" style="display: none; text-align: center; margin-bottom: 2rem;">
+        <p style="font-weight: 600; font-size: 1.2rem;">Selected: <span id="filename"></span></p>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button id="convert-btn" class="btn-primary" disabled>
+            Convert to JPGs 📸
+        </button>
+    </div>
+</div>
+
+<script>
+    let currentFile = null;
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const fileInfo = document.getElementById('file-info');
+    const filenameSpan = document.getElementById('filename');
+    const convertBtn = document.getElementById('convert-btn');
+
+    // -- File Handling --
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-active');
+    });
+
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-active');
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            alert('Please select a PDF file');
+            return;
+        }
+        currentFile = file;
+        filenameSpan.innerText = file.name;
+        dropArea.style.display = 'none';
+        fileInfo.style.display = 'block';
+        convertBtn.disabled = false;
+    }
+
+    convertBtn.addEventListener('click', async () => {
+        if (!currentFile) return;
+
+        const originalText = convertBtn.innerText;
+        convertBtn.innerText = 'Converting... ⏳';
+        convertBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', currentFile);
+
+        try {
+            const res = await fetch('/pdf-to-jpg', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = currentFile.name.replace('.pdf', '') + '_images.zip';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                const err = await res.json();
+                alert('Error: ' + err.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error converting file');
+        } finally {
+            convertBtn.innerText = originalText;
+            convertBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

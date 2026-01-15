@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Split PDF - PDF Suite{% endblock %}
+{% block page_title %}Split PDF{% endblock %}
+
+{% block content %}
+<div class="tool-container">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Extract specific pages or split the entire document.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-area">
+        <div class="upload-icon">✂️</div>
+        <h3>Drag & Drop PDF to Split</h3>
+        <p style="color: var(--text-muted);">or click to browse</p>
+        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+    </div>
+
+    <!-- Controls (Hidden initially) -->
+    <div id="controls-area" style="display: none; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+        <button id="select-all" class="btn-secondary">Select All</button>
+        <button id="deselect-all" class="btn-secondary">Deselect All</button>
+        <span id="selection-count" style="margin-left: auto; font-weight: bold; color: var(--primary);">0 pages
+            selected</span>
+    </div>
+
+    <!-- Page Grid -->
+    <div id="page-grid" class="file-grid">
+        <!-- Pages injected here -->
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar" style="gap: 1rem;">
+        <button id="split-all-btn" class="btn-secondary" disabled>
+            Split All to Zip 📦
+        </button>
+        <button id="extract-btn" class="btn-primary" disabled>
+            Extract Selected 📄
+        </button>
+    </div>
+</div>
+
+<style>
+    /* Reuse some styles from rotate, ideally move to styles.css */
+    .btn-secondary {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        color: var(--text-main);
+        transition: var(--transition);
+        font-weight: 500;
+    }
+
+    .btn-secondary:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .page-card {
+        background: var(--bg-card);
+        border: 2px solid transparent;
+        /* Prepare for selection border */
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: var(--transition);
+        cursor: pointer;
+        position: relative;
+    }
+
+    .page-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .page-card.selected {
+        border-color: var(--primary);
+        background-color: var(--primary-light);
+    }
+
+    .check-icon {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: none;
+        /* Show only when selected */
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+
+    .page-card.selected .check-icon {
+        display: flex;
+    }
+
+    .page-preview {
+        width: 100%;
+        height: 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .page-preview canvas {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentFile = null;
+    let selectedPages = new Set(); // Stores 0-based index
+    let pdfDoc = null;
+
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const pageGrid = document.getElementById('page-grid');
+    const extractBtn = document.getElementById('extract-btn');
+    const splitAllBtn = document.getElementById('split-all-btn');
+    const controlsArea = document.getElementById('controls-area');
+    const selectionCountSpan = document.getElementById('selection-count');
+
+    // -- File Handling --
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-active');
+    });
+
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-active');
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            alert('Please select a PDF file');
+            return;
+        }
+
+        currentFile = file;
+        selectedPages.clear();
+        pageGrid.innerHTML = '<p>Loading pages...</p>';
+        controlsArea.style.display = 'flex';
+        dropArea.style.display = 'none';
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+            renderPages();
+
+            splitAllBtn.disabled = false;
+            updateSelectionUI();
+        } catch (e) {
+            console.error(e);
+            alert("Error loading PDF");
+        }
+    }
+
+    async function renderPages() {
+        pageGrid.innerHTML = '';
+
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+            createPageCard(i);
+        }
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+            await renderPageContent(i);
+        }
+    }
+
+    function createPageCard(pageNum) {
+        const index = pageNum - 1;
+        const div = document.createElement('div');
+        div.className = 'page-card';
+        div.dataset.index = index;
+        div.onclick = () => toggleSelection(index);
+
+        div.innerHTML = `
+            <div class="check-icon">✓</div>
+            <div class="page-preview" id="preview-${index}">
+                <div class="loader">⏳</div>
+            </div>
+            <div class="page-info">Page ${pageNum}</div>
+        `;
+        pageGrid.appendChild(div);
+    }
+
+    async function renderPageContent(pageNum) {
+        const index = pageNum - 1;
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 0.4 });
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({
+            canvasContext: ctx,
+            viewport: viewport
+        }).promise;
+
+        const container = document.getElementById(`preview-${index}`);
+        container.innerHTML = '';
+        container.appendChild(canvas);
+    }
+
+    function toggleSelection(index) {
+        if (selectedPages.has(index)) {
+            selectedPages.delete(index);
+        } else {
+            selectedPages.add(index);
+        }
+
+        // Update visual class
+        const cards = document.querySelectorAll('.page-card');
+        cards[index].classList.toggle('selected', selectedPages.has(index));
+
+        updateSelectionUI();
+    }
+
+    function updateSelectionUI() {
+        const count = selectedPages.size;
+        selectionCountSpan.innerText = `${count} pages selected`;
+        extractBtn.disabled = count === 0;
+    }
+
+    // -- Controls --
+    document.getElementById('select-all').addEventListener('click', () => {
+        for (let i = 0; i < pdfDoc.numPages; i++) selectedPages.add(i);
+        document.querySelectorAll('.page-card').forEach(c => c.classList.add('selected'));
+        updateSelectionUI();
+    });
+
+    document.getElementById('deselect-all').addEventListener('click', () => {
+        selectedPages.clear();
+        document.querySelectorAll('.page-card').forEach(c => c.classList.remove('selected'));
+        updateSelectionUI();
+    });
+
+    // -- Submit Logic --
+    // type: 'extract' (selected) or 'all' (split into single files)
+    async function submitSplit(type) {
+        if (!currentFile) return;
+
+        const originalText = type === 'extract' ? extractBtn.innerText : splitAllBtn.innerText;
+        if (type === 'extract') extractBtn.innerText = 'Processing...';
+        else splitAllBtn.innerText = 'Processing...';
+
+        extractBtn.disabled = true;
+        splitAllBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', currentFile);
+
+        if (type === 'all') {
+            formData.append('pages', '"all"'); // Pass string "all"
+        } else {
+            // Sort pages
+            const pagesArray = Array.from(selectedPages).sort((a, b) => a - b);
+            formData.append('pages', JSON.stringify(pagesArray));
+        }
+
+        try {
+            const res = await fetch('/split', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = type === 'all' ? 'split_files.zip' : 'extracted_pages.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert('Error processing split');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error processing split');
+        } finally {
+            if (type === 'extract') extractBtn.innerText = originalText;
+            else splitAllBtn.innerText = originalText;
+
+            extractBtn.disabled = selectedPages.size === 0;
+            splitAllBtn.disabled = false;
+        }
+    }
+
+    extractBtn.addEventListener('click', () => submitSplit('extract'));
+    splitAllBtn.addEventListener('click', () => submitSplit('all'));
+
+</script>
+{% endblock %}

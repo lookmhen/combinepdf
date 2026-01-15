@@ -20,3 +20,4 @@ temp/
 # IDEs
 .vscode/
 .idea/
+app.spec

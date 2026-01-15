@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Watermark PDF - PDF Suite{% endblock %}
+{% block page_title %}Watermark PDF{% endblock %}
+
+{% block content %}
+<div class="tool-container">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Add custom text watermark to your PDF. Drag, rotate, and resize freely.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-area">
+        <div class="upload-icon">✒️</div>
+        <h3>Drag & Drop PDF to Watermark</h3>
+        <p style="color: var(--text-muted);">or click to browse</p>
+        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+    </div>
+
+    <!-- Editor Area (Hidden initially) -->
+    <div id="editor-area" style="display: none; flex-direction: column; gap: 2rem;">
+
+        <!-- Controls -->
+        <div class="controls-card"
+            style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; background: var(--bg-card); padding: 1rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
+            <div style="flex: 1; min-width: 200px;">
+                <label>Watermark Text</label>
+                <input type="text" id="wm-text" value="CONFIDENTIAL"
+                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+            </div>
+
+            <div>
+                <label>Color</label>
+                <input type="color" id="wm-color" value="#ff0000"
+                    style="height: 38px; width: 50px; padding: 0; border: none; cursor: pointer;">
+            </div>
+
+            <div>
+                <label>Size: <span id="size-val">40</span>px</label>
+                <input type="range" id="wm-size" min="10" max="200" value="40">
+            </div>
+
+            <div>
+                <label>Rotation: <span id="rotate-val">-45</span>°</label>
+                <input type="range" id="wm-rotate" min="-180" max="180" value="-45">
+            </div>
+
+            <div>
+                <label>Opacity: <span id="opacity-val">0.5</span></label>
+                <input type="range" id="wm-opacity" min="0.1" max="1.0" step="0.1" value="0.5">
+            </div>
+        </div>
+
+        <!-- Canvas Preview -->
+        <div id="canvas-container"
+            style="position: relative; width: 100%; overflow: auto; background: #eee; padding: 1rem; border-radius: 8px; text-align: center;">
+            <canvas id="pdf-canvas" style="border: 1px solid #ccc; max-width: 100%;"></canvas>
+            <p style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
+                Drag the text to position it.
+            </p>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button id="save-btn" class="btn-primary">
+                Apply Watermark & Save 💾
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    label {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentFile = null;
+    let pdfDoc = null;
+    let canvas = document.getElementById('pdf-canvas');
+    let ctx = canvas.getContext('2d');
+
+    // Watermark State
+    let wmState = {
+        text: "CONFIDENTIAL",
+        x: 0.5, // Percent
+        y: 0.5, // Percent
+        size: 40,
+        color: "#ff0000",
+        rotation: -45, // Degrees
+        isDragging: false
+    };
+
+    // PDF Rendering Scale
+    let renderScale = 1.0;
+
+    // -- Elements --
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const editorArea = document.getElementById('editor-area');
+    const inputs = {
+        text: document.getElementById('wm-text'),
+        color: document.getElementById('wm-color'),
+        size: document.getElementById('wm-size'),
+        rotate: document.getElementById('wm-rotate'),
+        opacity: document.getElementById('wm-opacity')
+    };
+
+    // -- File Handling --
+    dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+    dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('drag-active'); });
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
+    dropArea.addEventListener('drop', (e) => { e.preventDefault(); dropArea.classList.remove('drag-active'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') { alert('Select PDF'); return; }
+        currentFile = file;
+        dropArea.style.display = 'none';
+        editorArea.style.display = 'flex';
+
+        try {
+            const ab = await file.arrayBuffer();
+            pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise;
+            await renderPage(1);
+        } catch (e) {
+            console.error(e);
+            alert("Error loading PDF");
+        }
+    }
+
+    async function renderPage(num) {
+        const page = await pdfDoc.getPage(num);
+        const viewport = page.getViewport({ scale: 1.0 });
+
+        // Adjust canvas to fit screen width if huge
+        const containerWidth = document.getElementById('canvas-container').clientWidth - 40;
+        renderScale = containerWidth < viewport.width ? containerWidth / viewport.width : 1.0;
+
+        const scaledViewport = page.getViewport({ scale: renderScale });
+
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+
+        // Render PDF
+        await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+
+        // Save background
+        wmState.bgImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        draw();
+    }
+
+    function draw() {
+        if (!wmState.bgImage) return;
+
+        // Restore background
+        ctx.putImageData(wmState.bgImage, 0, 0);
+
+        // Draw Text
+        ctx.save();
+
+        ctx.font = `bold ${wmState.size}px Helvetica`;
+        ctx.fillStyle = wmState.color;
+
+        ctx.globalAlpha = wmState.opacity; // Apply opacity
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const x = wmState.x * canvas.width;
+        const y = wmState.y * canvas.height;
+
+        ctx.translate(x, y);
+        ctx.rotate(wmState.rotation * Math.PI / 180);
+        ctx.fillText(wmState.text, 0, 0);
+
+        // Draw selection box if dragging? (Optional)
+
+        ctx.restore();
+    }
+
+    // -- Event Listeners for Inputs --
+    function updateState() {
+        wmState.text = inputs.text.value;
+        wmState.color = inputs.color.value;
+        wmState.size = parseInt(inputs.size.value);
+        wmState.rotation = parseInt(inputs.rotate.value);
+        wmState.opacity = parseFloat(inputs.opacity.value);
+
+        // Update display values
+        document.getElementById('size-val').innerText = wmState.size;
+        document.getElementById('rotate-val').innerText = wmState.rotation;
+        document.getElementById('opacity-val').innerText = wmState.opacity;
+
+        draw();
+    }
+
+    Object.values(inputs).forEach(el => el.addEventListener('input', updateState));
+
+    // -- Mouse Interaction (Dragging) --
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left),
+            y: (e.clientY - rect.top)
+        };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const pos = getPos(e);
+        // Simple hit test: just assume if clicking on canvas, we move the watermark
+        // Since there is only one watermark
+        wmState.isDragging = true;
+
+        // update pos
+        wmState.x = pos.x / canvas.width;
+        wmState.y = pos.y / canvas.height;
+        draw();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!wmState.isDragging) return;
+        const pos = getPos(e);
+        wmState.x = Math.max(0, Math.min(1, pos.x / canvas.width));
+        wmState.y = Math.max(0, Math.min(1, pos.y / canvas.height));
+        draw();
+    });
+
+    window.addEventListener('mouseup', () => {
+        wmState.isDragging = false;
+    });
+
+    // -- Save --
+    document.getElementById('save-btn').addEventListener('click', async () => {
+        if (!currentFile) return;
+        const btn = document.getElementById('save-btn');
+        btn.innerText = "Applying... ⏳";
+        btn.disabled = true;
+
+        const config = {
+            text: wmState.text,
+            x: wmState.x,
+            y: wmState.y,
+            font_size: wmState.size * (1 / renderScale), // Adjust for viewport scale
+            rotation: wmState.rotation,
+            color: wmState.color,
+            opacity: wmState.opacity
+        };
+
+        const formData = new FormData();
+        formData.append('file', currentFile);
+        formData.append('config', JSON.stringify(config));
+
+        try {
+            const res = await fetch('/watermark', { method: 'POST', body: formData });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "watermarked_" + currentFile.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert("Error saving");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error saving");
+        } finally {
+            btn.innerText = "Apply Watermark & Save 💾";
+            btn.disabled = false;
+        }
+    });
+
+</script>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Compress PDF - PDF Suite{% endblock %}
+{% block page_title %}Compress PDF{% endblock %}
+
+{% block content %}
+<div class="tool-container">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Reduce your PDF file size while maintaining quality.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-area">
+        <div class="upload-icon">🗜️</div>
+        <h3>Drag & Drop PDF to Compress</h3>
+        <p style="color: var(--text-muted);">or click to browse</p>
+        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+    </div>
+
+    <!-- File Info (Hidden initially) -->
+    <div id="file-info" style="display: none; text-align: center; margin-bottom: 2rem;">
+        <p style="font-weight: 600; font-size: 1.2rem;">Selected: <span id="filename"></span></p>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button id="compress-btn" class="btn-primary" disabled>
+            Compress PDF 📉
+        </button>
+    </div>
+</div>
+
+<script>
+    let currentFile = null;
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const fileInfo = document.getElementById('file-info');
+    const filenameSpan = document.getElementById('filename');
+    const compressBtn = document.getElementById('compress-btn');
+
+    // -- File Handling --
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-active');
+    });
+
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-active');
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            alert('Please select a PDF file');
+            return;
+        }
+        currentFile = file;
+        filenameSpan.innerText = file.name;
+        dropArea.style.display = 'none';
+        fileInfo.style.display = 'block';
+        compressBtn.disabled = false;
+    }
+
+    compressBtn.addEventListener('click', async () => {
+        if (!currentFile) return;
+
+        const originalText = compressBtn.innerText;
+        compressBtn.innerText = 'Compressing... ⏳';
+        compressBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', currentFile);
+
+        try {
+            const res = await fetch('/compress', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                // Get compression ratio from header if available
+                const ratio = res.headers.get('X-Compression-Ratio');
+                if (ratio) {
+                    alert(`Success! File compressed by ${ratio}%`);
+                }
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'compressed_' + currentFile.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                const err = await res.json();
+                alert('Error: ' + err.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error compressing file');
+        } finally {
+            compressBtn.innerText = originalText;
+            compressBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

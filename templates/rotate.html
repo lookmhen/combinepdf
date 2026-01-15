@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Rotate PDF - PDF Suite{% endblock %}
+{% block page_title %}Rotate PDF{% endblock %}
+
+{% block content %}
+<div class="tool-container">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Rotate individual pages or the entire document.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-area">
+        <div class="upload-icon">🔄</div>
+        <h3>Drag & Drop PDF to Rotate</h3>
+        <p style="color: var(--text-muted);">or click to browse</p>
+        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+    </div>
+
+    <!-- Controls (Hidden initially) -->
+    <div id="controls-area" style="display: none; margin-bottom: 1rem; gap: 1rem;">
+        <button id="rotate-all-left" class="btn-secondary">↺ Rotate All Left</button>
+        <button id="rotate-all-right" class="btn-secondary">↻ Rotate All Right</button>
+        <span id="page-count" style="margin-left: auto; color: var(--text-muted);"></span>
+    </div>
+
+    <!-- Page Grid -->
+    <div id="page-grid" class="file-grid">
+        <!-- Pages injected here -->
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button id="save-btn" class="btn-primary" disabled>
+            Save Rotated PDF 💾
+        </button>
+    </div>
+</div>
+
+<style>
+    .btn-secondary {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        color: var(--text-main);
+        transition: var(--transition);
+        font-weight: 500;
+    }
+
+    .btn-secondary:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .page-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: var(--transition);
+    }
+
+    .page-preview {
+        width: 100%;
+        height: 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 1rem;
+        background: #f1f5f9;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .page-preview canvas {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        transition: transform 0.3s ease;
+    }
+
+    .page-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .rotate-btn {
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        width: 48px;
+        /* Increased from 32px */
+        height: 48px;
+        /* Increased from 32px */
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 1.5rem;
+        /* Increased icon size */
+        transition: var(--transition);
+    }
+
+    .rotate-btn:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Inline script for now, can move to separate file later if it grows
+
+    let currentFile = null;
+    let pageRotations = {}; // { pageIndex: 0|90|180|270 }
+    let pdfDoc = null;
+
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const pageGrid = document.getElementById('page-grid');
+    const saveBtn = document.getElementById('save-btn');
+    const controlsArea = document.getElementById('controls-area');
+
+    // -- File Handling -- (Simplify reuse later)
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-active');
+    });
+
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-active');
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            alert('Please select a PDF file');
+            return;
+        }
+
+        currentFile = file;
+        pageRotations = {};
+        pageGrid.innerHTML = '<p>Loading pages...</p>';
+        controlsArea.style.display = 'flex';
+        dropArea.style.display = 'none'; // Hide upload area to focus on content
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+            document.getElementById('page-count').innerText = `${pdfDoc.numPages} Pages`;
+            renderPages();
+            saveBtn.disabled = false;
+        } catch (e) {
+            console.error(e);
+            alert("Error loading PDF");
+        }
+    }
+
+    async function renderPages() {
+        pageGrid.innerHTML = '';
+
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+            createPageCard(i);
+        }
+        // Render content sequentially or parallel
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+            await renderPageContent(i);
+        }
+    }
+
+    function createPageCard(pageNum) {
+        const index = pageNum - 1;
+        const div = document.createElement('div');
+        div.className = 'page-card';
+        div.innerHTML = `
+            <div class="page-preview" id="preview-${index}">
+                <div class="loader">⏳</div>
+            </div>
+            <div class="page-info">Page ${pageNum}</div>
+            <div class="page-actions">
+                <button class="rotate-btn" onclick="rotatePage(${index}, -90)">↺</button>
+                <button class="rotate-btn" onclick="rotatePage(${index}, 90)">↻</button>
+            </div>
+        `;
+        pageGrid.appendChild(div);
+    }
+
+    async function renderPageContent(pageNum) {
+        const index = pageNum - 1;
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 0.4 }); // Thumbnail scale
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({
+            canvasContext: ctx,
+            viewport: viewport
+        }).promise;
+
+        const container = document.getElementById(`preview-${index}`);
+        container.innerHTML = '';
+        container.appendChild(canvas);
+    }
+
+    window.rotatePage = function (index, angleDelta) {
+        const currentAngle = pageRotations[index] || 0;
+        let newAngle = (currentAngle + angleDelta) % 360;
+        if (newAngle < 0) newAngle += 360;
+
+        pageRotations[index] = newAngle;
+
+        // Visually rotate the canvas
+        const container = document.getElementById(`preview-${index}`);
+        const canvas = container.querySelector('canvas');
+        if (canvas) {
+            canvas.style.transform = `rotate(${newAngle}deg)`;
+        }
+    }
+
+    // -- Global Controls --
+    document.getElementById('rotate-all-left').addEventListener('click', () => {
+        for (let i = 0; i < pdfDoc.numPages; i++) window.rotatePage(i, -90);
+    });
+
+    document.getElementById('rotate-all-right').addEventListener('click', () => {
+        for (let i = 0; i < pdfDoc.numPages; i++) window.rotatePage(i, 90);
+    });
+
+    // -- Save --
+    saveBtn.addEventListener('click', async () => {
+        if (!currentFile) return;
+
+        saveBtn.innerText = 'Saving...';
+        saveBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', currentFile);
+        formData.append('rotations', JSON.stringify(pageRotations));
+
+        try {
+            const res = await fetch('/rotate', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'rotated_' + currentFile.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert('Error saving file');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error saving file');
+        } finally {
+            saveBtn.innerText = 'Save Rotated PDF 💾';
+            saveBtn.disabled = false;
+        }
+    });
+
+</script>
+{% endblock %}

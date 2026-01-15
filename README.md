@@ -1,61 +1,96 @@
-# PDF Suite 📦✨
+# PDF Management Suite
 
-A modern, powerful, and easy-to-use web application for managing your PDF files.
-Currently features a robust **PDF Merger** with a drag-and-drop interface and visual previews.
+A modern, web-based tool for managing PDF files. Built with Python (Flask) and a clean, responsive interface.
+Features include merging, rotating, splitting, converting, watermarking, and compressing PDFs.
 
-> **Status**: Active Development & Modernization.
+## Features
 
-## Features 🚀
+### 1. Merge PDF
+Combine multiple PDF files into a single document.
+- **Drag & Drop** interface.
+- **Reorder** files before merging.
 
--   **Modern "Pastel Lively" UI**: A beautiful, friendly interface that supports both **Light** and **Dark** modes through a system-aware toggle.
--   **Visual Previews**: See thumbnails of your PDFs immediately upon dropping them, ensuring you are merging the right files.
--   **Drag & Drop Reordering**: Easily rearrange your files by dragging the cards.
--   **Secure & Private**: Temporary files are automatically cleaned up after 2 minutes. Unique session IDs ensure your data never overlaps with others.
--   **Modular Backend**: Built on **Flask** and **pypdf**, ready for future expansions like Split, Rotate, and Convert.
+### 2. Rotate PDF
+Rotate specific pages of a PDF document.
+- Interactive page preview.
+- Rotate individual pages left or right.
 
-## Tech Stack 🛠️
+### 3. Split PDF
+Extract specific pages or split an entire PDF into individual files.
+- Select specific pages to extract.
+- Or split all pages at once (downloads as a Zip).
 
--   **Backend**: Python, Flask, pypdf, Waitress
--   **Frontend**: HTML5, Modern CSS3 (Variables, Grids), JavaScript (ES modules)
--   **Libraries**: `pdf.js` for client-side rendering.
+### 4. Convert Tools
+- **PDF to JPG**: Convert PDF pages into high-quality images (Zip download).
+- **JPG to PDF**: Combine multiple images into a single PDF document.
 
-## Getting Started 🏃‍♂️
+### 5. Watermark PDF
+Add text watermarks to your PDF documents.
+- **Interactive Editor**: Drag, rotate, and resize text on a live preview.
+- Customizable color, font size, and rotation.
 
-1.  **Clone the repository**:
+### 6. Compress PDF
+Reduce the file size of your PDF documents while maintaining quality.
+- Uses advanced optimization (garbage collection, stream deflation).
+
+---
+
+## Installation & Setup
+
+### Prerequisites
+- Python 3.9 or higher.
+
+### Steps
+1.  **Clone or Download** this repository.
+2.  **Create a Virtual Environment** (Recommended):
     ```bash
-    git clone https://github.com/lookmhen/combinepdf.git
-    cd combinepdf
-    ```
-
-2.  **Set up Virtual Environment**:
-    ```bash
-    # Windows
     python -m venv venv
+    # Windows
     venv\Scripts\activate
+    # Mac/Linux
+    source venv/bin/activate
     ```
-
 3.  **Install Dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
 
-4.  **Run the Server**:
+### Running the Application
+1.  **Start the Server**:
     ```bash
     python app.py
     ```
-    Access the app at `http://localhost:80/merge`
+2.  **Access the App**:
+    Open your browser and navigate to:
+    `http://localhost:80` (or the port displayed in the terminal).
 
-## Roadmap 🗺️
+---
 
--   [x] **Merge PDF**: Combine multiple files.
--   [ ] **Split PDF**: Extract pages or split into individual files.
--   [ ] **Rotate PDF**: Fix orientation of scanned documents.
--   [ ] **Convert**: Images to PDF and vice versa.
+## Tech Stack
+- **Backend**: Python, Flask, Waitress (WSGI Server).
+- **PDF Processing**: 
+  - `pypdf`: Merging, Rotating, Splitting.
+  - `pymupdf` (fitz): Rendering previews, Watermarking, Compression, Image Conversion.
+- **Frontend**: HTML5, CSS3 (Modern Variables), JavaScript (Vanilla), PDF.js.
 
-## Contributing 🤝
+## Project Structure
+```
+.
+├── app.py              # Main Flask Application
+├── pdf_services.py     # Core PDF Operations logic
+├── utils.py            # File utilities
+├── requirements.txt    # Project dependencies
+├── static/             # Static assets (PDF.js, CSS, JS)
+└── templates/          # HTML Templates
+    ├── base.html       # Base layout
+    ├── index.html      # Merge tool
+    ├── rotate.html     # Rotate tool
+    ├── split.html      # Split tool
+    ├── watermark.html  # Watermark tool
+    ├── compress.html   # Compress tool
+    └── ...
+```
 
-Contributions are welcome! Please feel free to open issues or submit pull requests for new features.
-
-## License 📜
-
-[MIT License](LICENSE)
+## Troubleshooting
+- **Missing Utilities**: If you see errors about missing `zlib` or `headers` when installing, ensure you have the latest `pip` and are installing the binary wheels for `pymupdf`.
+- **Large Files**: The app is configured to handle files up to 100MB. This can be adjusted in `app.py`.

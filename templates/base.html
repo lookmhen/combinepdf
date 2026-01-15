@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}PDF Suite{% endblock %}</title>
-    
+
     <!-- Google Fonts: Outfit for Modern/Friendly feel -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    
+
     <!-- PDF.js for thumbnails -->
     <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs"></script>
     <script type="module">
@@ -21,6 +22,7 @@
         window.pdfjsLib = pdfjsLib;
     </script>
 </head>
+
 <body>
 
     <div class="app-container">
@@ -30,22 +32,49 @@
                 <span style="font-size: 1.8rem;">📦</span>
                 <span>PDF Suite</span>
             </div>
-            
+
             <ul class="nav-menu">
                 <li class="nav-item">
-                    <a href="{{ url_for('home') }}" class="nav-link {% if request.path == '/' or request.path == '/merge/' %}active{% endif %}">
+                    <a href="{{ url_for('home') }}"
+                        class="nav-link {% if request.path == '/' or request.path == '/merge/' %}active{% endif %}">
                         <span>🧩</span> Merge PDF
                     </a>
                 </li>
                 <!-- Future Features Placeholders -->
                 <li class="nav-item">
-                    <a href="#" class="nav-link" style="opacity: 0.5; cursor: default;">
-                        <span>✂️</span> Split (Soon)
+                    <a href="{{ url_for('rotate_page') }}"
+                        class="nav-link {% if request.path == '/rotate' %}active{% endif %}">
+                        <span>🔄</span> Rotate PDF
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link" style="opacity: 0.5; cursor: default;">
-                        <span>🔄</span> Rotate (Soon)
+                    <a href="{{ url_for('split_page') }}"
+                        class="nav-link {% if request.path == '/split' %}active{% endif %}">
+                        <span>✂️</span> Split PDF
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('pdf_to_jpg_page') }}"
+                        class="nav-link {% if request.path == '/pdf-to-jpg' %}active{% endif %}">
+                        <span>🖼️</span> PDF to JPG
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('jpg_to_pdf_page') }}"
+                        class="nav-link {% if request.path == '/jpg-to-pdf' %}active{% endif %}">
+                        <span>📷</span> JPG to PDF
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('watermark_page') }}"
+                        class="nav-link {% if request.path == '/watermark' %}active{% endif %}">
+                        <span>✒️</span> Watermark PDF
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('compress_page') }}"
+                        class="nav-link {% if request.path == '/compress' %}active{% endif %}">
+                        <span>🗜️</span> Compress PDF
                     </a>
                 </li>
             </ul>
@@ -59,7 +88,7 @@
         <main class="main-content">
             <header class="header">
                 <h1 class="page-title">{% block page_title %}Tool{% endblock %}</h1>
-                
+
                 <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Dark Mode">
                     <span id="theme-icon">🌙</span>
                 </button>
@@ -91,7 +120,8 @@
             themeIcon.textContent = isDark ? '☀️' : '🌙';
         });
     </script>
-    
+
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

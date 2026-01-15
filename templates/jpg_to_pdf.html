@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}JPG to PDF - PDF Suite{% endblock %}
+{% block page_title %}JPG to PDF{% endblock %}
+
+{% block content %}
+<div class="tool-container">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Convert your images (JPG, PNG) into a single PDF document.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-area">
+        <div class="upload-icon">📷</div>
+        <h3>Drag & Drop Images here</h3>
+        <p style="color: var(--text-muted);">or click to browse</p>
+        <input type="file" id="file-input" multiple accept="image/jpeg, image/png, image/jpg" style="display: none;">
+    </div>
+
+    <!-- File Grid -->
+    <div id="file-grid" class="file-grid">
+        <!-- Images injected here -->
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button id="convert-btn" class="btn-primary" disabled>
+            Convert to PDF 📑
+        </button>
+    </div>
+</div>
+
+<script>
+    let files = []; // { id, file, url }
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const fileGrid = document.getElementById('file-grid');
+    const convertBtn = document.getElementById('convert-btn');
+
+    // -- File Handling --
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFiles(e.target.files);
+        fileInput.value = '';
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-active');
+    });
+
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-active');
+        if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+    });
+
+    function handleFiles(fileList) {
+        for (const file of fileList) {
+            if (file.type.startsWith('image/')) {
+                addFile(file);
+            } else {
+                alert(`Skipped "${file.name}": Not an image`);
+            }
+        }
+        updateUI();
+    }
+
+    function addFile(file) {
+        const id = Math.random().toString(36).substr(2, 9);
+        const url = URL.createObjectURL(file);
+        files.push({ id, file, url });
+    }
+
+    function removeFile(id) {
+        files = files.filter(f => f.id !== id);
+        updateUI();
+    }
+
+    function updateUI() {
+        fileGrid.innerHTML = '';
+        files.forEach(f => renderCard(f));
+        convertBtn.disabled = files.length === 0;
+    }
+
+    function renderCard(fileObj) {
+        const card = document.createElement('div');
+        card.className = 'file-card';
+        card.draggable = true;
+        card.dataset.id = fileObj.id;
+
+        // Drag Sort (Simple Reuse)
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragover', handleDragOver);
+        card.addEventListener('drop', handleDrop);
+
+        card.innerHTML = `
+            <button class="remove-btn" onclick="removeFile('${fileObj.id}')">×</button>
+            <div class="file-preview">
+                <img src="${fileObj.url}" style="max-width:100%; max-height:100%; object-fit:contain;">
+            </div>
+            <div class="file-info">${fileObj.file.name}</div>
+        `;
+        fileGrid.appendChild(card);
+    }
+
+    // -- Drag Sort Logic (Duplicated for simplicity, could be shared) --
+    let dragSrcEl = null;
+
+    function handleDragStart(e) {
+        dragSrcEl = this;
+        e.dataTransfer.effectAllowed = 'move';
+        this.classList.add('dragging');
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) e.preventDefault();
+        return false;
+    }
+
+    function handleDrop(e) {
+        e.stopPropagation();
+        if (dragSrcEl !== this) {
+            const idx1 = files.findIndex(f => f.id === dragSrcEl.dataset.id);
+            const idx2 = files.findIndex(f => f.id === this.dataset.id);
+            if (idx1 > -1 && idx2 > -1) {
+                const temp = files[idx1];
+                files[idx1] = files[idx2];
+                files[idx2] = temp;
+                updateUI();
+            }
+        }
+        return false;
+    }
+
+    // -- Convert --
+    convertBtn.addEventListener('click', async () => {
+        const originalText = convertBtn.innerText;
+        convertBtn.innerText = 'Converting... ⏳';
+        convertBtn.disabled = true;
+
+        const formData = new FormData();
+        files.forEach(f => formData.append('files[]', f.file));
+
+        try {
+            const res = await fetch('/jpg-to-pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'images_converted.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                const err = await res.json();
+                alert('Error: ' + err.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error converting files');
+        } finally {
+            convertBtn.innerText = originalText;
+            convertBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}
