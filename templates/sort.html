@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Sort PDF Pages - PDF Suite{% endblock %}
+{% block page_title %}Sort PDF Pages{% endblock %}
+
+{% block content %}
+<div class="tool-container">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Reorder PDF pages by dragging them or using quick sort buttons.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-area">
+        <div class="upload-icon">📄</div>
+        <h3>Drag & Drop PDF to Sort</h3>
+        <p style="color: var(--text-muted);">or click to browse</p>
+        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+    </div>
+
+    <!-- Controls (Hidden initially) -->
+    <div id="controls-area" style="display: none; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;">
+        <button id="sort-asc" class="btn-secondary">↑ Sort Ascending</button>
+        <button id="sort-desc" class="btn-secondary">↓ Sort Descending</button>
+        <button id="reset-order" class="btn-secondary">🔄 Reset Order</button>
+        <span id="page-count" style="margin-left: auto; color: var(--text-muted);"></span>
+    </div>
+
+    <!-- Page Grid (Drag & Drop) -->
+    <div id="page-grid" class="file-grid sortable-grid">
+        <!-- Pages injected here -->
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button id="save-btn" class="btn-primary" disabled>
+            Save Sorted PDF 💾
+        </button>
+    </div>
+</div>
+
+<style>
+    .btn-secondary {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        color: var(--text-main);
+        transition: var(--transition);
+        font-weight: 500;
+    }
+
+    .btn-secondary:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .sortable-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 1.5rem;
+        padding: 1rem 0;
+    }
+
+    .page-card {
+        background: var(--bg-card);
+        border: 2px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: var(--transition);
+        cursor: grab;
+        user-select: none;
+    }
+
+    .page-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+
+    .page-card.dragging {
+        opacity: 0.5;
+        border-color: var(--primary);
+        cursor: grabbing;
+    }
+
+    .page-card.drag-over {
+        border-color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    .page-preview {
+        width: 100%;
+        height: 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        background: #f1f5f9;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .page-preview canvas {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .page-info {
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: 0.25rem;
+    }
+
+    .page-order {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .drag-handle {
+        font-size: 1.2rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentFile = null;
+    let pdfDoc = null;
+    let pageOrder = []; // Array of original page numbers in current order
+    let originalOrder = []; // To reset
+
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-input');
+    const pageGrid = document.getElementById('page-grid');
+    const saveBtn = document.getElementById('save-btn');
+    const controlsArea = document.getElementById('controls-area');
+
+    // -- File Handling --
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-active');
+    });
+
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-active'));
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-active');
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            alert('Please select a PDF file');
+            return;
+        }
+
+        currentFile = file;
+        pageGrid.innerHTML = '<p>Loading pages...</p>';
+        controlsArea.style.display = 'flex';
+        dropArea.style.display = 'none';
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+            // Initialize page order (1-indexed original page numbers)
+            pageOrder = [];
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                pageOrder.push(i);
+            }
+            originalOrder = [...pageOrder];
+
+            document.getElementById('page-count').innerText = `${pdfDoc.numPages} Pages`;
+            renderPages();
+            saveBtn.disabled = false;
+        } catch (e) {
+            console.error(e);
+            alert("Error loading PDF");
+        }
+    }
+
+    async function renderPages() {
+        pageGrid.innerHTML = '';
+
+        for (let i = 0; i < pageOrder.length; i++) {
+            createPageCard(i, pageOrder[i]);
+        }
+        // Render thumbnails
+        for (let i = 0; i < pageOrder.length; i++) {
+            await renderPageContent(i, pageOrder[i]);
+        }
+    }
+
+    function createPageCard(orderIndex, originalPageNum) {
+        const div = document.createElement('div');
+        div.className = 'page-card';
+        div.draggable = true;
+        div.dataset.orderIndex = orderIndex;
+        div.dataset.originalPage = originalPageNum;
+        div.innerHTML = `
+            <div class="page-preview" id="preview-${orderIndex}">
+                <div class="loader">⏳</div>
+            </div>
+            <div class="page-info">Page ${originalPageNum}</div>
+            <div class="page-order">Position: ${orderIndex + 1}</div>
+            <div class="drag-handle">⋮⋮</div>
+        `;
+
+        // Drag Events
+        div.addEventListener('dragstart', handleDragStart);
+        div.addEventListener('dragend', handleDragEnd);
+        div.addEventListener('dragover', handleDragOver);
+        div.addEventListener('dragenter', handleDragEnter);
+        div.addEventListener('dragleave', handleDragLeave);
+        div.addEventListener('drop', handleDrop);
+
+        pageGrid.appendChild(div);
+    }
+
+    async function renderPageContent(orderIndex, originalPageNum) {
+        const page = await pdfDoc.getPage(originalPageNum);
+        const viewport = page.getViewport({ scale: 0.4 });
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({
+            canvasContext: ctx,
+            viewport: viewport
+        }).promise;
+
+        const container = document.getElementById(`preview-${orderIndex}`);
+        if (container) {
+            container.innerHTML = '';
+            container.appendChild(canvas);
+        }
+    }
+
+    // -- Drag & Drop Logic --
+    let draggedElement = null;
+
+    function handleDragStart(e) {
+        draggedElement = this;
+        this.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', this.dataset.orderIndex);
+    }
+
+    function handleDragEnd(e) {
+        this.classList.remove('dragging');
+        document.querySelectorAll('.page-card').forEach(card => {
+            card.classList.remove('drag-over');
+        });
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
+    function handleDragEnter(e) {
+        this.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+        this.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (draggedElement !== this) {
+            const fromIndex = parseInt(draggedElement.dataset.orderIndex);
+            const toIndex = parseInt(this.dataset.orderIndex);
+
+            // Swap in pageOrder array
+            const temp = pageOrder[fromIndex];
+            pageOrder[fromIndex] = pageOrder[toIndex];
+            pageOrder[toIndex] = temp;
+
+            // Re-render
+            renderPages();
+        }
+
+        this.classList.remove('drag-over');
+        return false;
+    }
+
+    // -- Sort Functions --
+    document.getElementById('sort-asc').addEventListener('click', () => {
+        pageOrder.sort((a, b) => a - b);
+        renderPages();
+    });
+
+    document.getElementById('sort-desc').addEventListener('click', () => {
+        pageOrder.sort((a, b) => b - a);
+        renderPages();
+    });
+
+    document.getElementById('reset-order').addEventListener('click', () => {
+        pageOrder = [...originalOrder];
+        renderPages();
+    });
+
+    // -- Save --
+    saveBtn.addEventListener('click', async () => {
+        if (!currentFile) return;
+
+        saveBtn.innerText = 'Saving...';
+        saveBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', currentFile);
+        formData.append('page_order', JSON.stringify(pageOrder));
+
+        try {
+            const res = await fetch('/sort-pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'sorted_' + currentFile.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert('Error saving file');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error saving file');
+        } finally {
+            saveBtn.innerText = 'Save Sorted PDF 💾';
+            saveBtn.disabled = false;
+        }
+    });
+
+</script>
+{% endblock %}

@@ -144,6 +144,55 @@ def rotate():
         if saved_path and os.path.exists(saved_path):
             os.remove(saved_path)
 
+@app.route('/sort')
+def sort_page():
+    return render_template('sort.html')
+
+@app.route('/sort-pdf', methods=['POST'])
+def sort_pdf():
+    """
+    Handle PDF page reordering.
+    Expects 'file' and 'page_order' (JSON array of page numbers) in request.
+    """
+    if 'file' not in request.files:
+         return jsonify({"error": "No file uploaded"}), 400
+         
+    file = request.files['file']
+    page_order_json = request.form.get('page_order', '[]')
+    
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+        
+    import json
+    try:
+        page_order = json.loads(page_order_json)
+    except:
+        return jsonify({"error": "Invalid page order data"}), 400
+
+    saved_path = None
+    try:
+        # Save input
+        original_name = secure_filename(file.filename)
+        temp_filename = f"sort_in_{secrets.token_hex(8)}_{original_name}"
+        saved_path = utils.get_temp_path(temp_filename)
+        file.save(saved_path)
+        
+        # Prepare output
+        output_filename = f"sorted_{secrets.token_hex(8)}.pdf"
+        output_path = utils.get_temp_path(output_filename)
+        
+        # Reorder pages
+        pdf_services.reorder_pdf(saved_path, output_path, page_order)
+        
+        return send_file(output_path, as_attachment=True, download_name="sorted_document.pdf")
+        
+    except Exception as e:
+        logger.error(f"Sort error: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if saved_path and os.path.exists(saved_path):
+            os.remove(saved_path)
+
 @app.route('/split')
 def split_page():
     return render_template('split.html')

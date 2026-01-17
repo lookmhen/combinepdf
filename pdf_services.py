@@ -74,6 +74,42 @@ def rotate_pdf(file_path: str, output_path: str, rotations: dict) -> str:
         logger.error(f"Error rotating PDF: {e}")
         raise
 
+def reorder_pdf(file_path: str, output_path: str, page_order: list) -> str:
+    """
+    Reorder PDF pages based on the provided order.
+    
+    Args:
+        file_path: Path to the input PDF.
+        output_path: Path to save the reordered PDF.
+        page_order: List of page numbers in desired order (1-indexed).
+                   Example: [3, 1, 2] means page 3 first, then page 1, then page 2.
+                   
+    Returns:
+        Path to output file.
+    """
+    try:
+        doc = fitz.open(file_path)
+        new_doc = fitz.open()
+        
+        for page_num in page_order:
+            # page_order is 1-indexed, PyMuPDF is 0-indexed
+            src_page_idx = page_num - 1
+            if 0 <= src_page_idx < len(doc):
+                new_doc.insert_pdf(doc, from_page=src_page_idx, to_page=src_page_idx)
+            else:
+                logger.warning(f"Page {page_num} is out of range, skipping")
+        
+        new_doc.save(output_path)
+        new_doc.close()
+        doc.close()
+        
+        logger.info(f"Reordered PDF saved to {output_path}")
+        return output_path
+        
+    except Exception as e:
+        logger.error(f"Error reordering PDF: {e}")
+        raise
+
 def split_pdf(file_path: str, output_dir: str, page_selection: List[int] = None) -> List[str]:
     """
     Split PDF into multiple files or extract specific pages.
