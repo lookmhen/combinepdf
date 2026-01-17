@@ -587,5 +587,66 @@ def start_server():
     logger.info(f"Starting server on http://{host}:{port}")
     serve(app, host=host, port=port)
 
+@app.route('/edit-pdf', methods=['GET', 'POST'])
+def edit_pdf_page():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+            
+        if file:
+            filename = secure_filename(file.filename)
+            input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(input_path)
+            
+            # Edits Config (JSON string)
+            edits_json = request.form.get('edits', '{}')
+            logger.info(f"Received edits JSON: {edits_json}")
+            import json
+            try:
+                edits_config = json.loads(edits_json)
+            except Exception as e:
+                logger.error(f"Error parsing edits JSON: {e}")
+                edits_config = {}
+
+            # Handle Uploaded Images for editing
+            # Expecting keys like "image_0", "image_1" corresponding to imageIds in config
+            image_paths = {}
+            for key in request.files:
+                if key.startswith('image_assets_'):
+                    img_file = request.files[key]
+                    if img_file.filename:
+                        img_name = secure_filename(img_file.filename)
+                        img_path = os.path.join(app.config['UPLOAD_FOLDER'], f"asset_{img_name}")
+                        img_file.save(img_path)
+                        # Key format: image_assets_{id}
+                        asset_id = key.replace('image_assets_', '')
+                        image_paths[asset_id] = img_path
+            
+            output_filename = f"edited_{filename}"
+            output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+            
+            try:
+                pdf_services.apply_edits(input_path, output_path, edits_config, image_paths)
+                
+                # Clean up input
+                try:
+                    os.remove(input_path)
+                    for p in image_paths.values():
+                        if os.path.exists(p): os.remove(p)
+                except:
+                    pass
+                    
+                return send_file(output_path, as_attachment=True)
+            except Exception as e:
+                logger.error(f"Error applying edits: {e}", exc_info=True)
+                return jsonify({'error': str(e)}), 500
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+    return render_template('edit_pdf.html')
+
 if __name__ == '__main__':
     start_server()

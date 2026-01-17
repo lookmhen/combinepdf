@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 TEMP_DIR = 'temp'
-MAX_LIFETIME = 120  # 2 minutes
+MAX_LIFETIME = 3600  # 1 hour
 
 def ensure_temp_directory_exists() -> None:
     """Ensure the temporary directory exists."""

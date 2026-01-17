@@ -443,3 +443,177 @@ def unlock_pdf(file_path: str, output_path: str, password: str) -> str:
     except Exception as e:
         logger.error(f"Error unlocking PDF: {e}")
         raise
+
+def apply_edits(file_path: str, output_path: str, edits_config: dict, image_paths: dict) -> str:
+    """
+    Apply text, image, and shape edits to a PDF.
+    
+    Args:
+        file_path: Input PDF path
+        output_path: Output PDF path
+        edits_config: Dictionary mapping page index (str/int) to list of edit objects.
+        image_paths: Dictionary mapping imageId to local file path for uploaded images.
+        
+    Returns:
+        output_path
+    """
+    try:
+        logger.info(f"Applying edits. Config: {edits_config}")
+        doc = fitz.open(file_path)
+        
+        for page_idx_str, edits in edits_config.items():
+            page_idx = int(page_idx_str)
+            logger.info(f"Processing page {page_idx}, {len(edits)} edits")
+            
+            if page_idx < 0 or page_idx >= len(doc):
+                logger.warning(f"Page index {page_idx} out of range")
+                continue
+                
+            page = doc[page_idx]
+            
+            for edit in edits:
+                type_ = edit.get('type')
+                
+                x_pct = float(edit.get('x', 0))
+                y_pct = float(edit.get('y', 0))
+                w_pct = float(edit.get('w', 0))
+                h_pct = float(edit.get('h', 0))
+                
+                rect_page = page.rect
+                x = rect_page.width * x_pct
+                y = rect_page.height * y_pct
+                w = rect_page.width * w_pct
+                h = rect_page.height * h_pct
+
+                # Sanity Check for Coordinates (Pixels vs Percentages)
+                final_x = x if x_pct <= 2.0 else x_pct
+                final_y = y if y_pct <= 2.0 else y_pct
+                final_w = w if w_pct <= 2.0 else w_pct
+                final_h = h if h_pct <= 2.0 else h_pct
+                
+                if type_ == 'text':
+                    text = edit.get('text', '')
+                    fontsize = float(edit.get('fontSize', 24))
+                    color_hex = edit.get('color', '#000000')
+                    opacity = float(edit.get('opacity', 1.0))
+                    
+                    # Color conversion
+                    color = (0, 0, 0)
+                    if color_hex.startswith('#') and len(color_hex) == 7:
+                        color = tuple(int(color_hex.lstrip('#')[i:i+2], 16)/255 for i in (0, 2, 4))
+                        
+                    # Font selection
+                    font_family = edit.get('fontFamily', 'helv')
+                    base_font = "Helvetica"
+                    custom_font = None
+                    
+                    if 'tahoma' in font_family.lower() or 'thai' in font_family.lower():
+                        # Try to load Thai font
+                        thai_font_path = r"C:\Windows\Fonts\tahoma.ttf"
+                        if not os.path.exists(thai_font_path):
+                             thai_font_path = r"C:\Windows\Fonts\angsan.ttf" # Try Angsana
+                        
+                        if os.path.exists(thai_font_path):
+                            try:
+                                page.insert_font(fontname="thai", fontfile=thai_font_path)
+                                custom_font = "thai"
+                            except Exception as e:
+                                logger.error(f"Failed to insert Thai font: {e}")
+                        else:
+                             logger.warning("Thai font file not found")
+                    
+                    elif 'times' in font_family.lower(): base_font = "Times"
+                    elif 'courier' in font_family.lower(): base_font = "Courier"
+                    
+                    is_bold = edit.get('bold', False)
+                    is_italic = edit.get('italic', False)
+                    
+                    if custom_font:
+                        fontname = custom_font
+                    else:
+                        fontname = base_font
+                        if base_font == "Times": 
+                            if is_bold and is_italic: fontname = "Times-BoldItalic"
+                            elif is_bold: fontname = "Times-Bold"
+                            elif is_italic: fontname = "Times-Italic"
+                            else: fontname = "Times-Roman"
+                        else: 
+                            if is_bold and is_italic: fontname += "-BoldOblique"
+                            elif is_bold: fontname += "-Bold"
+                            elif is_italic: fontname += "-Oblique"
+
+                    
+                    logger.info(f"Inserting text '{text}' with font: {fontname} at {final_x},{final_y}")
+                    
+                    # Direct insert_text (proven in add_watermark)
+                    # Note: Y passed to insert_text is Point (baselineish)
+                    try:
+                        page.insert_text(
+                            (final_x, final_y + fontsize), 
+                            text,
+                            fontsize=fontsize,
+                            fontname=fontname,
+                            color=color,
+                            fill_opacity=opacity,
+                            overlay=True
+                        )
+                    except Exception as e_text:
+                        logger.error(f"Text insert failed: {e_text}. Retrying with 'helv'")
+                        page.insert_text(
+                            (final_x, final_y + fontsize), 
+                            text,
+                            fontsize=fontsize,
+                            fontname="helv",
+                            color=color,
+                            fill_opacity=opacity,
+                            overlay=True
+                        )
+                    
+                elif type_ == 'image':
+                    img_id = edit.get('imageId')
+                    img_path = image_paths.get(img_id)
+                    logger.info(f"Inserting image {img_id} at {final_x},{final_y}")
+                    
+                    if img_path and os.path.exists(img_path):
+                        target_rect = fitz.Rect(final_x, final_y, final_x + final_w, final_y + final_h)
+                        page.insert_image(target_rect, filename=img_path)
+                        
+                elif type_ == 'shape':
+                    shape_type = edit.get('shapeType', 'rect')
+                    fill_hex = edit.get('fill', 'none')
+                    stroke_hex = edit.get('stroke', '#000000')
+                    stroke_width = float(edit.get('strokeWidth', 2))
+                    
+                    logger.info(f"Inserting shape {shape_type} at {final_x},{final_y}")
+
+                    fill_col = None
+                    if fill_hex != 'none' and fill_hex.startswith('#'):
+                        fill_col = tuple(int(fill_hex.lstrip('#')[i:i+2], 16)/255 for i in (0, 2, 4))
+                        
+                    stroke_col = (0,0,0)
+                    if stroke_hex.startswith('#'):
+                        stroke_col = tuple(int(stroke_hex.lstrip('#')[i:i+2], 16)/255 for i in (0, 2, 4))
+                    
+                    shape = page.new_shape()
+                    rect_area = fitz.Rect(final_x, final_y, final_x + final_w, final_y + final_h)
+                    
+                    if shape_type == 'rect':
+                        shape.draw_rect(rect_area)
+                    elif shape_type == 'circle' or shape_type == 'ellipse':
+                        shape.draw_oval(rect_area)
+                        
+                    shape.finish(
+                        color=stroke_col, 
+                        fill=fill_col, 
+                        width=stroke_width
+                    )
+                    shape.commit(overlay=True)
+
+        doc.save(output_path)
+        doc.close()
+        logger.info(f"Edits applied, saved to {output_path}")
+        return output_path
+        
+    except Exception as e:
+        logger.error(f"Error applying edits: {e}")
+        raise

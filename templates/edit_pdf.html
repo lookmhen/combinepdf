@@ -1,0 +1,1338 @@
+{% extends "base.html" %}
+
+{% block title %}Edit PDF - PDF Suite{% endblock %}
+{% block page_title %}Edit PDF{% endblock %}
+
+{% block content %}
+<style>
+    /* Layout Grid */
+    .editor-container {
+        display: flex;
+        height: calc(100vh - 140px);
+        /* Adjust based on header height */
+        gap: 1rem;
+        position: relative;
+    }
+
+    /* Toolbar */
+    .editor-toolbar {
+        position: absolute;
+        top: -60px;
+        /* Shift up into main header area if possible, or just above */
+        left: 0;
+        right: 0;
+        background: var(--bg-card);
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-md);
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        box-shadow: var(--shadow-sm);
+        z-index: 10;
+        flex-wrap: wrap;
+    }
+
+    .tool-group {
+        display: flex;
+        gap: 0.25rem;
+        border-right: 1px solid var(--border);
+        padding-right: 1rem;
+        align-items: center;
+    }
+
+    .tool-group:last-child {
+        border-right: none;
+    }
+
+    .tool-btn {
+        background: none;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        padding: 0.4rem;
+        cursor: pointer;
+        color: var(--text-main);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 0.8rem;
+    }
+
+    .tool-btn:hover,
+    .tool-btn.active {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .tool-btn i {
+        font-size: 1.2rem;
+        margin-bottom: 2px;
+    }
+
+    /* Main Canvas Area */
+    .canvas-wrapper {
+        flex: 1;
+        background: var(--bg-body);
+        /* Contrast background */
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        position: relative;
+    }
+
+    /* Page Container */
+    .pdf-page-container {
+        position: relative;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-md);
+        background: white;
+    }
+
+    .pdf-canvas {
+        display: block;
+    }
+
+    .editor-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+    }
+
+    /* Right Sidebar (Layers) */
+    .layers-panel {
+        width: 280px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .layers-header {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        font-weight: 700;
+        background: var(--bg-body);
+    }
+
+    .layers-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
+
+    .layer-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin-bottom: 2px;
+        cursor: pointer;
+        background: var(--bg-card);
+        border: 1px solid transparent;
+        font-size: 0.9rem;
+    }
+
+    .layer-item:hover {
+        background: var(--bg-body);
+    }
+
+    .layer-item.active {
+        background: var(--primary-light);
+        border-color: var(--primary);
+    }
+
+    .layer-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 8px;
+    }
+
+    .layer-name {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .layer-actions {
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .layer-item:hover .layer-actions {
+        opacity: 1;
+    }
+
+    .action-icon {
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 3px;
+        color: var(--text-muted);
+    }
+
+    .action-icon:hover {
+        background: rgba(0, 0, 0, 0.1);
+        color: var(--text-main);
+    }
+
+    /* Property Bar (Contextual) */
+    .property-bar {
+        display: none;
+        /* Show when element selected */
+        gap: 0.5rem;
+        align-items: center;
+        font-size: 0.9rem;
+    }
+
+    .color-picker {
+        width: 24px;
+        height: 24px;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    /* Upload Area specific override */
+    .editor-upload {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        max-width: 500px;
+    }
+
+    /* Handles */
+    .element-box {
+        position: absolute;
+        cursor: move;
+        border: 1px dashed transparent;
+    }
+
+    .element-box:hover,
+    .element-box.selected {
+        border-color: var(--primary);
+    }
+
+    .element-box.selected .resize-handle {
+        display: block;
+    }
+
+    .resize-handle {
+        width: 8px;
+        height: 8px;
+        background: white;
+        border: 1px solid var(--primary);
+        position: absolute;
+        display: none;
+    }
+
+    .rh-se {
+        bottom: -4px;
+        right: -4px;
+        cursor: se-resize;
+    }
+
+    .element-content {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+    }
+
+    .text-element {
+        white-space: nowrap;
+        line-height: 1;
+        user-select: none;
+    }
+
+    .image-element img {
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    .shape-element svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+    }
+
+    /* Toolbar Overrides for New Menu */
+    .editpdf-submenu-wrapper {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        border-radius: 4px;
+        padding: 4px;
+        gap: 8px;
+    }
+
+    .editpdf__menu__block {
+        display: flex;
+        align-items: center;
+        border-right: 1px solid #e0e0e0;
+        padding-right: 8px;
+        margin-right: 8px;
+    }
+
+    .editpdf__menu__block:last-child {
+        border: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .wrapper {
+        display: flex;
+        align-items: center;
+        margin-right: 8px;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .wrapper:last-child {
+        margin-right: 0;
+    }
+
+    .editpdf-icon {
+        width: 16px;
+        height: 16px;
+        margin-right: 4px;
+        fill: #47474f;
+    }
+
+    .leftside-icon {
+        margin-right: 6px;
+    }
+
+    select.modern-select {
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        color: #333;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .switch-button {
+        padding: 4px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .switch-button:hover {
+        background: #f0f0f0;
+    }
+
+    .switch-button.active {
+        background: #e0e0e0;
+    }
+
+    .color-palette-wrapper {
+        display: flex;
+        align-items: center;
+    }
+
+    .unfold-arrow-icon {
+        margin-left: 4px;
+    }
+
+    .recycle-bin {
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+    }
+
+    .recycle-bin:hover {
+        background: #ffebee;
+        fill: #d32f2f;
+    }
+
+    .recycle-bin svg path {
+        fill: inherit;
+    }
+
+    /* Editable Text Focus */
+    .element-content[contenteditable="true"] {
+        cursor: text;
+        outline: none;
+        min-width: 20px;
+    }
+
+    .element-content[contenteditable="true"]:focus {
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Shape Menu Styles */
+    .shape-menu-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .shape-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        min-width: 140px;
+        padding: 4px 0;
+        margin-top: 4px;
+    }
+
+    .shape-dropdown.show {
+        display: block;
+        animation: fadeIn 0.15s ease-out;
+    }
+
+    .shape-option {
+        padding: 10px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.95rem;
+        color: #333;
+        transition: background 0.2s;
+    }
+
+    .shape-option:hover {
+        background-color: #f5f7fa;
+        color: #2563eb;
+    }
+
+    .shape-option i {
+        font-style: normal;
+        font-size: 1.1em;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Page Navigation Sidebar */
+    .editor-main-row {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        width: 100%;
+        height: calc(100vh - 140px);
+        /* Approx height minus header/toolbar */
+    }
+
+    .page-nav-panel {
+        width: 200px;
+        /* Sidebar Width */
+        background: var(--bg-card);
+        border-right: 1px solid var(--border);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        padding: 1rem 0.5rem;
+        gap: 1rem;
+        flex-shrink: 0;
+    }
+
+    .page-thumb {
+        cursor: pointer;
+        border: 2px solid transparent;
+        padding: 4px;
+        border-radius: 6px;
+        transition: all 0.2s;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .page-thumb:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    .page-thumb canvas {
+        width: 100%;
+        max-width: 140px;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .page-thumb.active {
+        border-color: var(--primary);
+        background-color: var(--primary-light);
+    }
+
+    .page-thumb-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 6px;
+        font-weight: 500;
+    }
+</style>
+
+<div class="editor-container" id="editor-ui" style="display: none;">
+    <!-- Toolbar -->
+    <div class="editor-toolbar">
+        <div class="tool-group">
+            <button class="tool-btn active" id="tool-select" title="Select/Move">
+                <i>👆</i> Select
+            </button>
+            <button class="tool-btn" id="tool-text" title="Add Text">
+                <i>T</i> Text
+            </button>
+            <button class="tool-btn" id="tool-image" title="Add Image">
+                <i>🖼️</i> Image
+            </button>
+
+            <!-- Combined Shape Tool -->
+            <div class="shape-menu-wrapper">
+                <button class="tool-btn" id="tool-shape-menu" title="Shapes">
+                    <i>⬜</i> Shapes ▾
+                </button>
+                <div class="shape-dropdown" id="shape-dropdown">
+                    <div class="shape-option" id="tool-rect"><i>⬜</i> Rectangle</div>
+                    <div class="shape-option" id="tool-circle"><i>⭕</i> Circle</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic Properties (USER PROVIDED TOOLBAR) -->
+        <div class="tool-group property-bar" id="prop-text" style="display: none;">
+            <div class="editpdf-submenu-wrapper">
+
+                <!-- Font Family & Size -->
+                <div class="editpdf__menu__block" data-name="fontFamilyAndSize">
+                    <div class="wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                            class="editpdf-icon leftside-icon" viewBox="0 0 24 24">
+                            <path fill="#47474F" d="M2.5 4v3h5v12h3V7h5V4h-13zm19 5h-9v3h3v7h3v-7h3V9z" />
+                        </svg>
+                        <select id="text-font-family" title="Font Family" class="modern-select">
+                            <option value="helv" selected>Helvetica</option>
+                            <option value="times">Times New Roman</option>
+                            <option value="courier">Courier</option>
+                            <option value="tahoma">Thai (Tahoma)</option>
+                        </select>
+                    </div>
+                    <div class="wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14.405" height="11.076" fill="#47474F"
+                            fill-rule="evenodd" class="editpdf-icon leftside-icon">
+                            <path
+                                d="M9.63 11.076c.302 0 .543-.1.725-.273s.273-.424.273-.725V1.654h2.84c.624 0 .936-.276.936-.827S14.093 0 13.47 0h-7.7c-.624 0-.936.276-.936.827s.312.827.936.827h2.84v8.424c0 .302.1.543.273.725s.43.273.74.273zm-6.934-.036c.235 0 .424-.07.567-.206s.214-.32.214-.55V6.328H4.66c.246 0 .43-.052.55-.155s.18-.262.18-.475-.06-.37-.18-.47-.304-.15-.55-.15H.73c-.246 0-.43.05-.55.15s-.18.258-.18.47.06.37.18.475.304.155.55.155h1.184v3.956c0 .23.07.413.214.55s.332.206.567.206z">
+                            </path>
+                        </svg>
+                        <select id="fontSize_select" class="modern-select">
+                            <option value="12">12</option>
+                            <option value="14">14</option>
+                            <option value="18">18</option>
+                            <option value="24" selected>24</option>
+                            <option value="36">36</option>
+                            <option value="48">48</option>
+                            <option value="72">72</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- BIU & Colors -->
+                <div class="editpdf__menu__block" data-name="fontTransformationsAndColor">
+                    <div class="wrapper">
+                        <div class="switch-button isBold" id="btn-bold" data-value="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="12" class="editpdf-icon">
+                                <path fill="#47474F" fill-rule="evenodd"
+                                    d="M5.81 12C8.377 12 10 10.64 10 8.565c0-1.634-1.2-2.817-2.892-2.905v-.07C8.5 5.404 9.453 4.353 9.453 3.02 9.453 1.148 8.025 0 5.688 0h-4.25C.53 0 0 .53 0 1.466v9.068C0 11.46.53 12 1.437 12H5.81zm-1.2-7.03H2.848V1.996h1.966c1.155 0 1.843.54 1.843 1.448 0 .954-.758 1.528-2.046 1.528zm-1.764 5.05H4.92c1.42 0 2.187-.574 2.187-1.66 0-1.06-.802-1.634-2.25-1.634h-2.01v3.294z">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="wrapper">
+                        <div class="switch-button isItalics" id="btn-italic" data-value="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="9" height="12" class="editpdf-icon">
+                                <path fill="#47474F" fill-rule="evenodd"
+                                    d="M6.203 12c.436 0 .745-.256.745-.68 0-.415-.3-.672-.736-.672H4.34l2.052-9.296h1.862c.445 0 .745-.265.745-.69C9 .256 8.71 0 8.264 0H2.797c-.436 0-.736.256-.736.663 0 .424.31.69.745.69h1.862l-2.062 9.296H.736c-.436 0-.736.256-.736.672 0 .424.31.68.745.68h5.458z">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Color Picker Simple Implementation for MVP -->
+                    <div class="wrapper color-palette-wrapper">
+                        <input type="color" id="text-color" value="#000000"
+                            style="width: 24px; height: 24px; border:none; padding:0; background:none; cursor:pointer;">
+                    </div>
+                </div>
+
+                <!-- Opacity -->
+                <div class="editpdf__menu__block" data-name="opacity">
+                    <div class="wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="editpdf-icon">
+                            <g fill="#c1c2c7">
+                                <path d="M5.333 5.333h5.333v5.333H5.333z"></path>
+                                <path
+                                    d="M1 0h4.333v5.333H0V1a1 1 0 0 1 1-1zM0 10.667h4.333a1 1 0 0 1 1 1V16H0v-5.333zM10.667 0H16v5.333h-4.333a1 1 0 0 1-1-1V0zm0 10.667H16V15a1 1 0 0 1-1 1h-4.333v-5.333z"
+                                    fill-rule="evenodd"></path>
+                            </g>
+                            <path fill="#47474F" fill-rule="evenodd"
+                                d="M0 15.2V.8A.8.8 0 0 1 .8 0h14.4a.8.8 0 0 1 .8.8v14.4a.8.8 0 0 1-.8.8H.8a.8.8 0 0 1-.8-.8zM.8.8v14.4h14.4V.8H.8z">
+                            </path>
+                        </svg>
+                        <select id="opacity_select" class="modern-select">
+                            <option value="1">100%</option>
+                            <option value="0.75">75%</option>
+                            <option value="0.5">50%</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Delete -->
+                <div class="editpdf__menu__block">
+                    <div class="wrapper delete-btn-wrapper" id="btn-text-delete" title="Delete">
+                        <div class="editpdf__submenu__btn recycle-bin">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="18">
+                                <path fill="#40464f" fill-rule="evenodd"
+                                    d="M11.87 18c1.05 0 1.683-.57 1.727-1.626l.53-11.902h1.223c.356 0 .65-.294.65-.65 0-.363-.295-.657-.65-.657h-3.714V1.98C11.636.778 10.82 0 9.5 0H6.482C5.18 0 4.364.778 4.364 1.98v1.185H.65c-.356 0-.65.294-.65.657 0 .355.295.65.65.65h1.232l.53 11.902C2.456 17.43 3.08 18 4.14 18h7.73zM10.256 3.166H5.753V2.06c0-.458.338-.787.833-.787h2.83c.495 0 .842.33.842.787v1.107zM4.564 15.128c.01.355.234.614.538.614.32 0 .555-.285.547-.623l-.33-8.892c-.017-.33-.27-.605-.564-.605-.312 0-.555.26-.547.614l.356 8.892zM8 15.742c-.304 0-.564-.285-.564-.623V6.228c0-.33.26-.605.564-.605s.573.277.573.605l-.01 8.892c0 .337-.26.623-.564.623zm2.36-.623c-.01.337.217.623.538.623.312 0 .53-.26.538-.614l.364-8.892c.01-.346-.243-.614-.555-.614-.295 0-.547.277-.555.605l-.33 8.892z">
+                                </path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-group property-bar" id="prop-shape">
+            <label>Fill:</label>
+            <input type="color" id="shape-fill" class="color-picker" value="#ff0000">
+            <label>Stroke:</label>
+            <input type="color" id="shape-stroke" class="color-picker" value="#000000">
+            <input type="number" id="stroke-width" value="2" class="modern-input" style="width: 40px;">
+        </div>
+
+        <div class="tool-group" style="margin-left: auto;">
+            <button class="tool-btn" id="btn-save" style="color: var(--primary);">
+                <i>💾</i> Save PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Layout Row -->
+    <div class="editor-main-row">
+        <!-- Left Sidebar: Page Nav -->
+        <div class="page-nav-panel" id="page-nav-panel">
+            <div style="text-align:center; color: var(--text-muted); font-size: 0.8rem;">Loading pages...</div>
+        </div>
+
+        <!-- Center Canvas -->
+        <div class="canvas-wrapper" id="canvas-wrapper">
+            <!-- Rendered Pages will go here -->
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="layers-panel">
+            <div class="layers-header">
+                Layers / Elements
+                <div style="font-size: 0.7rem; font-weight: normal; color: var(--text-muted); margin-top: 4px;">
+                    Page: <span id="current-page-label">1</span>
+                </div>
+            </div>
+            <div class="layers-list" id="layers-list">
+                <!-- Items injected here -->
+                <div style="padding: 1rem; text-align: center; color: var(--text-muted);">No elements added</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload UI -->
+<div class="upload-area editor-upload" id="upload-ui">
+    <div class="upload-icon">📝</div>
+    <h3>Edit PDF</h3>
+    <p>Upload a PDF to add text, images, and shapes.</p>
+    <input type="file" id="file-input" accept=".pdf" style="display:none;">
+</div>
+
+<script>
+    // --- State ---
+    const state = {
+        file: null,
+        pdfDoc: null,
+        scale: 1.5, // Canvas scale
+        pages: [], // { pageNum, width, height, elements: [] }
+        // Element: { id, type, x, y, w, h, props: {} }
+        activeTool: 'select',
+        selectedElementId: null,
+        activePageIdx: 0,
+        idCounter: 1
+    };
+
+    const els = {
+        upload: document.getElementById('upload-ui'),
+        editor: document.getElementById('editor-ui'),
+        fileInput: document.getElementById('file-input'),
+        canvasWrapper: document.getElementById('canvas-wrapper'),
+        pageNav: document.getElementById('page-nav-panel'),
+        layersList: document.getElementById('layers-list'),
+        pageLabel: document.getElementById('current-page-label'),
+
+        // Tools
+        tools: {
+            select: document.getElementById('tool-select'),
+            text: document.getElementById('tool-text'),
+            image: document.getElementById('tool-image'),
+            shapeMenu: document.getElementById('tool-shape-menu'),
+            // Shape options don't act as "State tools" directly but trigger addElement
+            rect: document.getElementById('tool-rect'),
+            circle: document.getElementById('tool-circle')
+        },
+
+        // Props
+        props: {
+            text: document.getElementById('prop-text'),
+            shape: document.getElementById('prop-shape')
+        },
+
+        // New Text Tool Elements
+        textTools: {
+            fontFamily: document.getElementById('text-font-family'),
+            fontSize: document.getElementById('fontSize_select'),
+            color: document.getElementById('text-color'),
+            bold: document.getElementById('btn-bold'),
+            italic: document.getElementById('btn-italic'),
+            opacity: document.getElementById('opacity_select'),
+            delete: document.getElementById('btn-text-delete')
+        }
+    };
+
+    // --- Upload ---
+    els.upload.addEventListener('click', () => els.fileInput.click());
+    els.fileInput.addEventListener('change', async (e) => {
+        if (e.target.files[0]) {
+            state.file = e.target.files[0];
+            await loadPDF(state.file);
+            els.upload.style.display = 'none';
+            els.editor.style.display = 'flex';
+        }
+    });
+
+    async function loadPDF(file) {
+        const url = URL.createObjectURL(file);
+        state.pdfDoc = await pdfjsLib.getDocument(url).promise;
+        renderPages();
+    }
+
+    async function renderPages() {
+        els.canvasWrapper.innerHTML = '';
+        els.pageNav.innerHTML = '';
+        state.pages = [];
+
+        for (let i = 1; i <= state.pdfDoc.numPages; i++) {
+            const page = await state.pdfDoc.getPage(i);
+            const viewport = page.getViewport({ scale: state.scale });
+
+            // Container
+            const container = document.createElement('div');
+            container.className = 'pdf-page-container';
+            container.style.width = viewport.width + 'px';
+            container.style.height = viewport.height + 'px';
+            container.id = 'page-container-' + (i - 1);
+            container.dataset.pageIdx = i - 1;
+
+            // Canvas
+            const canvas = document.createElement('canvas');
+            canvas.className = 'pdf-canvas';
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            page.render({ canvasContext: ctx, viewport: viewport });
+
+            // Overlay (for elements)
+            const overlay = document.createElement('div');
+            overlay.className = 'editor-overlay';
+            overlay.id = `overlay-${i - 1}`;
+            overlay.addEventListener('click', (e) => onCanvasClick(e, i - 1));
+
+            container.appendChild(canvas);
+            container.appendChild(overlay);
+            els.canvasWrapper.appendChild(container);
+
+            state.pages.push({
+                idx: i - 1,
+                w: viewport.width,
+                h: viewport.height,
+                elements: []
+            });
+
+            // Thumbnail
+            const thumbScale = 180 / viewport.width; // Auto scale to width
+            const thumbViewport = page.getViewport({ scale: thumbScale < 0.2 ? 0.2 : thumbScale });
+
+            const thumbItem = document.createElement('div');
+            thumbItem.className = 'page-thumb';
+            if (i === 1) thumbItem.classList.add('active');
+
+            thumbItem.onclick = () => {
+                document.querySelectorAll('.page-thumb').forEach(t => t.classList.remove('active'));
+                thumbItem.classList.add('active');
+                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                state.activePageIdx = i - 1;
+                els.pageLabel.innerText = i;
+                updateLayersPanel(i - 1);
+            };
+
+            const thumbCanvas = document.createElement('canvas');
+            thumbCanvas.width = thumbViewport.width;
+            thumbCanvas.height = thumbViewport.height;
+            const thumbCtx = thumbCanvas.getContext('2d');
+            page.render({ canvasContext: thumbCtx, viewport: thumbViewport });
+
+            const thumbLabel = document.createElement('div');
+            thumbLabel.className = 'page-thumb-label';
+            thumbLabel.innerText = 'Page ' + i;
+
+            thumbItem.appendChild(thumbCanvas);
+            thumbItem.appendChild(thumbLabel);
+            els.pageNav.appendChild(thumbItem);
+        }
+    }
+
+    // --- Tools ---
+    // Standard Tools (Select, Text)
+    // --- Tools Helper: Insert Immediately ---
+    function insertElementImmediate(type, subType = null) {
+        if (!state.pdfDoc) return alert('Please upload a PDF first.');
+
+        // Default to center of currently valid page or page 0
+        const pIdx = state.activePageIdx || 0;
+        const page = state.pages[pIdx];
+        if (!page) return;
+
+        // Center coordinates
+        const x = page.w / 2 - 50;
+        const y = page.h / 2 - 30;
+
+        if (type === 'text') {
+            addElement(pIdx, 'text', { x, y, text: 'Double Click to Edit', fontSize: 24 });
+        } else if (type === 'shape') {
+            const w = subType === 'rect' ? 100 : 80;
+            const h = subType === 'rect' ? 60 : 80;
+            addElement(pIdx, 'shape', { x, y, w, h, shapeType: subType });
+        }
+        // Image handled separately via file picker
+    }
+
+    // --- Tools Listeners ---
+    els.tools.select.addEventListener('click', () => setTool('select'));
+
+    els.tools.text.addEventListener('click', () => {
+        // Immediate insertion as requested
+        insertElementImmediate('text');
+        setTool('select');
+    });
+
+    els.tools.image.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (ev) => {
+            if (ev.target.files[0]) {
+                const file = ev.target.files[0];
+                const url = URL.createObjectURL(file);
+                // Insert immediately at center of active page
+                const pIdx = state.activePageIdx || 0;
+                const page = state.pages[pIdx];
+                if (page) {
+                    const x = page.w / 2 - 75;
+                    const y = page.h / 2 - 75;
+                    addElement(pIdx, 'image', { x, y, w: 150, h: 150, src: url, file: file });
+                }
+                setTool('select');
+            }
+        };
+        input.click();
+    });
+
+    els.tools.shapeMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('shape-dropdown').classList.toggle('show');
+    });
+
+    els.tools.rect.addEventListener('click', () => {
+        document.getElementById('shape-dropdown').classList.remove('show');
+        insertElementImmediate('shape', 'rect');
+        setTool('select');
+    });
+    els.tools.circle.addEventListener('click', () => {
+        document.getElementById('shape-dropdown').classList.remove('show');
+        insertElementImmediate('shape', 'circle');
+        setTool('select');
+    });
+
+    // Close dropdown on outside click
+    window.addEventListener('click', () => {
+        document.getElementById('shape-dropdown').classList.remove('show');
+    });
+
+    function setTool(tool) {
+        state.activeTool = tool;
+        Object.values(els.tools).forEach(btn => btn?.classList.remove('active'));
+        if (tool === 'select') els.tools.select.classList.add('active');
+        // Combined shape or others logic? 
+        // With immediate insertion, we primarily stay in 'select' mode.
+    }
+
+    function setTool(tool) {
+        state.activeTool = tool;
+        Object.values(els.tools).forEach(btn => btn?.classList.remove('active'));
+
+        // Highlight logic
+        if (tool === 'rect' || tool === 'circle') els.tools.shapeMenu.classList.add('active');
+        else if (els.tools[tool]) els.tools[tool].classList.add('active');
+
+        // Clear Selection if switching
+        if (tool !== 'select') deselectAll();
+    }
+
+    // --- Canvas Interaction ---
+    function onCanvasClick(e, pageIdx) {
+        if (e.target !== e.currentTarget) return;
+        // Since we moved to immediate insertion, clicking canvas empties selection
+        deselectAll();
+    }
+
+    function addElement(pageIdx, type, props) {
+        const id = state.idCounter++;
+        const el = {
+            id, type,
+            x: props.x, y: props.y,
+            w: props.w || 100, h: props.h || 30, // Default sizes
+            props: { ...props } // Store generic props
+        };
+
+        state.pages[pageIdx].elements.push(el);
+        renderElementDOM(pageIdx, el);
+        updateLayersPanel(pageIdx);
+        selectElement(el.id);
+    }
+
+    function renderElementDOM(pageIdx, el) {
+        const overlay = document.getElementById(`overlay-${pageIdx}`);
+        const box = document.createElement('div');
+        box.className = 'element-box';
+        box.id = `el-${el.id}`;
+        box.style.left = el.x + 'px';
+        box.style.top = el.y + 'px';
+        box.style.width = el.w + 'px';
+        box.style.height = el.h + 'px';
+
+        // Content
+        const content = document.createElement('div');
+        content.className = `element-content ${el.type}-element`;
+
+        if (el.type === 'text') {
+            content.innerText = el.props.text;
+            content.style.fontSize = (el.props.fontSize) + 'px';
+            content.style.color = el.props.color || '#000000';
+            content.style.fontFamily = el.props.fontFamily || 'Helvetica';
+            if (el.props.bold) content.style.fontWeight = 'bold';
+            if (el.props.italic) content.style.fontStyle = 'italic';
+            content.style.opacity = el.props.opacity !== undefined ? el.props.opacity : 1;
+
+            // Editable Logic: Single Click = Move (Parent Box), Double Click = Edit (Content)
+            content.contentEditable = false; // Initially false
+            content.style.pointerEvents = 'none'; // Pass clicks to box for drag
+
+            box.dataset.type = 'text'; // Marker
+
+            // Double Click on BOX triggers edit mode
+            box.ondblclick = (ev) => {
+                ev.stopPropagation();
+                content.contentEditable = true;
+                content.style.pointerEvents = 'auto'; // Capture input events
+                content.focus();
+
+                // Add blur listener to finish editing
+                const onBlur = () => {
+                    content.contentEditable = false;
+                    content.style.pointerEvents = 'none';
+                    el.props.text = content.innerText;
+                    updateLayersPanel(pageIdx);
+                };
+                content.addEventListener('blur', onBlur, { once: true });
+            };
+
+            content.oninput = (ev) => {
+                el.props.text = content.innerText;
+            };
+
+            box.style.border = '1px solid transparent';
+            box.style.width = 'auto';
+            box.style.height = 'auto';
+        } else if (el.type === 'shape') {
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            // Set viewBox?
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+
+            const shape = document.createElementNS("http://www.w3.org/2000/svg", el.props.shapeType === 'rect' ? 'rect' : 'ellipse');
+            shape.setAttribute('fill', el.props.fill || 'none'); // Default transparent
+            shape.setAttribute('stroke', el.props.stroke || '#000000');
+            shape.setAttribute('stroke-width', el.props.strokeWidth || 2);
+            shape.setAttribute('width', '100%');
+            shape.setAttribute('height', '100%');
+
+            if (el.props.shapeType === 'circle') {
+                shape.setAttribute('cx', '50%');
+                shape.setAttribute('cy', '50%');
+                shape.setAttribute('rx', '49%'); // avoid clipping stroke
+                shape.setAttribute('ry', '49%');
+            }
+
+            svg.appendChild(shape);
+            content.appendChild(svg);
+        } else if (el.type === 'image') {
+            const img = document.createElement('img');
+            img.src = el.props.src;
+            content.appendChild(img);
+        }
+
+        box.appendChild(content);
+
+        // Resize Handle
+        const handle = document.createElement('div');
+        handle.className = 'resize-handle rh-se';
+        box.appendChild(handle);
+
+        // Drag Logic
+        box.addEventListener('mousedown', (e) => startDrag(e, el, box, 'move'));
+        handle.addEventListener('mousedown', (e) => { e.stopPropagation(); startDrag(e, el, box, 'resize'); });
+
+        // Selection
+        box.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectElement(el.id);
+        });
+
+        overlay.appendChild(box);
+    }
+
+
+
+    function selectElement(id) {
+        state.selectedElementId = id;
+        document.querySelectorAll('.element-box').forEach(b => b.classList.remove('selected'));
+        const box = document.getElementById(`el-${id}`);
+        if (box) box.classList.add('selected');
+
+        // Find element to populate props
+        let found = null;
+        let pIdx = -1;
+        state.pages.forEach((p, i) => {
+            const el = p.elements.find(e => e.id === id);
+            if (el) { found = el; pIdx = i; }
+        });
+
+        if (found) {
+            updateLayersPanel(pIdx);
+            showProps(found);
+            state.activePageIdx = pIdx;
+            els.pageLabel.innerText = pIdx + 1;
+        } else {
+            hideProps();
+        }
+    }
+
+    function deselectAll() {
+        state.selectedElementId = null;
+        document.querySelectorAll('.element-box').forEach(b => b.classList.remove('selected'));
+        hideProps();
+    }
+
+    // --- Layers Panel ---
+    function updateLayersPanel(pageIdx) {
+        els.layersList.innerHTML = '';
+        const page = state.pages[pageIdx];
+        if (!page || page.elements.length === 0) {
+            els.layersList.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted);">No elements on this page.</div>';
+            return;
+        }
+
+        // Reverse order (top on top)
+        [...page.elements].reverse().forEach(el => {
+            const item = document.createElement('div');
+            item.className = 'layer-item';
+            if (el.id === state.selectedElementId) item.classList.add('active');
+
+            let iconStr = '⬜';
+            if (el.type === 'text') iconStr = 'T';
+            else if (el.type === 'image') iconStr = '🖼️';
+            else if (el.type === 'shape' && el.props.shapeType === 'circle') iconStr = '⭕';
+
+            let name = el.type === 'text' ? (el.props.text.substring(0, 15) || 'Text') : `New ${el.type}`;
+            if (el.type === 'shape') name = `New ${el.props.shapeType}`;
+
+            item.innerHTML = `
+                <div class="layer-icon">${iconStr}</div>
+                <div class="layer-name">${name}</div>
+                <div class="layer-actions">
+                    <span class="action-icon" title="Edit">✏️</span>
+                    <span class="action-icon btn-del" title="Delete">🗑️</span>
+                </div>
+            `;
+
+            item.addEventListener('click', () => selectElement(el.id));
+
+            // Delete
+            item.querySelector('.btn-del').addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteElement(pageIdx, el.id);
+            });
+
+            els.layersList.appendChild(item);
+        });
+    }
+
+    function deleteElement(pageIdx, id) {
+        const page = state.pages[pageIdx];
+        page.elements = page.elements.filter(e => e.id !== id);
+
+        const box = document.getElementById(`el-${id}`);
+        if (box) box.remove();
+
+        updateLayersPanel(pageIdx);
+        deselectAll();
+    }
+
+    // --- Properties ---
+    function showProps(el) {
+        document.querySelectorAll('.property-bar').forEach(b => b.style.display = 'none');
+        if (el.type === 'text') {
+            els.props.text.style.display = 'flex';
+
+            // Sync Input values
+            const tt = els.textTools;
+            tt.color.value = el.props.color || '#000000';
+            tt.fontSize.value = el.props.fontSize || 24;
+            tt.fontFamily.value = el.props.fontFamily || 'helv';
+            tt.opacity.value = el.props.opacity !== undefined ? el.props.opacity : 1;
+
+            // Toggles
+            tt.bold.classList.toggle('active', !!el.props.bold);
+            tt.italic.classList.toggle('active', !!el.props.italic);
+
+            // Bindings - Remove old listeners (naive, but works for MVP single selection)
+            // Ideally we use named functions or centralized event handler.
+            // For now, simple re-assignment:
+
+            tt.fontSize.onchange = (e) => updateTextProp(el, 'fontSize', e.target.value);
+            tt.fontFamily.onchange = (e) => updateTextProp(el, 'fontFamily', e.target.value);
+            tt.color.onchange = (e) => updateTextProp(el, 'color', e.target.value);
+            tt.opacity.onchange = (e) => updateTextProp(el, 'opacity', e.target.value);
+
+            tt.bold.onclick = () => {
+                el.props.bold = !el.props.bold;
+                updateTextProp(el, 'bold', el.props.bold);
+                tt.bold.classList.toggle('active', !!el.props.bold);
+            };
+
+            tt.italic.onclick = () => {
+                el.props.italic = !el.props.italic;
+                updateTextProp(el, 'italic', el.props.italic);
+                tt.italic.classList.toggle('active', !!el.props.italic);
+            };
+
+            tt.delete.onclick = () => {
+                let pIdx = -1;
+                state.pages.forEach((p, i) => { if (p.elements.includes(el)) pIdx = i; });
+                if (pIdx >= 0) deleteElement(pIdx, el.id);
+            };
+
+        } else if (el.type === 'shape') {
+            els.props.shape.style.display = 'flex';
+            // Bindings...
+            document.getElementById('shape-fill').value = el.props.fill || '#ffffff';
+            document.getElementById('shape-stroke').value = el.props.stroke || '#000000';
+            document.getElementById('stroke-width').value = el.props.strokeWidth || 2;
+
+            document.getElementById('shape-fill').onchange = (e) => {
+                el.props.fill = e.target.value;
+                const svgShape = document.getElementById(`el-${el.id}`).querySelector('rect, ellipse');
+                if (svgShape) svgShape.setAttribute('fill', e.target.value);
+            };
+            document.getElementById('shape-stroke').onchange = (e) => {
+                el.props.stroke = e.target.value;
+                const svgShape = document.getElementById(`el-${el.id}`).querySelector('rect, ellipse');
+                if (svgShape) svgShape.setAttribute('stroke', e.target.value);
+            };
+            document.getElementById('stroke-width').onchange = (e) => {
+                el.props.strokeWidth = e.target.value;
+                const svgShape = document.getElementById(`el-${el.id}`).querySelector('rect, ellipse');
+                if (svgShape) svgShape.setAttribute('stroke-width', e.target.value);
+            };
+        }
+    }
+
+    function updateTextProp(el, prop, value) {
+        el.props[prop] = value;
+        const domEl = document.getElementById(`el-${el.id}`).querySelector('.element-content');
+        if (!domEl) return;
+
+        if (prop === 'fontSize') domEl.style.fontSize = value + 'px';
+        if (prop === 'fontFamily') domEl.style.fontFamily = value;
+        if (prop === 'color') domEl.style.color = value;
+        if (prop === 'bold') domEl.style.fontWeight = value ? 'bold' : 'normal';
+        if (prop === 'italic') domEl.style.fontStyle = value ? 'italic' : 'normal';
+        if (prop === 'opacity') domEl.style.opacity = value;
+    }
+
+    function hideProps() {
+        document.querySelectorAll('.property-bar').forEach(b => b.style.display = 'none');
+    }
+
+    // --- Save ---
+    document.getElementById('btn-save').addEventListener('click', async () => {
+        if (!state.file) return;
+
+        // Prepare Edits Config
+        const editsConfig = {};
+        const formData = new FormData();
+        formData.append('file', state.file);
+
+        state.pages.forEach(p => {
+            if (p.elements.length > 0) {
+                const pageEdits = [];
+                p.elements.forEach((el, idx) => {
+                    // Normalize coordinates associated closer to standard PDF (bottom-left origin vs top-left? PyMuPDF uses Top-Left defaults usually)
+                    // Calculate Percentages
+                    const xPct = el.x / p.w;
+                    const yPct = el.y / p.h;
+
+                    // Width/Height logic
+                    // If text, we assume backend re-renders font. 
+                    // IMPORTANT: Get final width/height from DOM
+                    const box = document.getElementById(`el-${el.id}`);
+                    const wPct = box.offsetWidth / p.w;
+                    const hPct = box.offsetHeight / p.h;
+
+                    const editItem = {
+                        ...el.props,
+                        type: el.type,
+                        x: xPct, y: yPct,
+                        w: wPct, h: hPct
+                    };
+
+                    // Image Handling
+                    if (el.type === 'image' && el.props.file) {
+                        const assetKey = `image_assets_${el.id}`;
+                        formData.append(assetKey, el.props.file);
+                        editItem.imageId = `${el.id}`;
+                        // Remove File object from json
+                        delete editItem.file;
+                        delete editItem.src;
+                    }
+
+                    pageEdits.push(editItem);
+                });
+                editsConfig[p.idx] = pageEdits;
+            }
+        });
+
+        formData.append('edits', JSON.stringify(editsConfig));
+
+        // Post
+        try {
+            // Show Loading...
+            const res = await fetch('/edit-pdf', { method: 'POST', body: formData });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'edited.pdf';
+                a.click();
+            } else {
+                try {
+                    const err = await res.json();
+                    alert('Error saving PDF: ' + err.error);
+                } catch {
+                    alert('Error saving PDF');
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Save failed');
+        }
+    });
+
+    // --- Interaction ---
+    function startDrag(e, el, box, mode) {
+        if (state.activeTool !== 'select') return;
+
+        // If editing text, do not drag. Check if contentEditable is actually TRUE
+        const content = box.querySelector('.element-content');
+        if (content && content.isContentEditable) return;
+
+        e.preventDefault();
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startElX = el.x;
+        const startElY = el.y;
+        const startW = box.offsetWidth;
+        const startH = box.offsetHeight;
+
+        function onMouseMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+
+            if (mode === 'move') {
+                el.x = startElX + dx;
+                el.y = startElY + dy;
+                box.style.left = el.x + 'px';
+                box.style.top = el.y + 'px';
+            } else if (mode === 'resize') {
+                // For text, resizing usually changes font size or box, keeping simple: box resize
+                if (el.type === 'image' || el.type === 'shape') {
+                    el.w = Math.max(20, startW + dx);
+                    el.h = Math.max(20, startH + dy);
+                    box.style.width = el.w + 'px';
+                    box.style.height = el.h + 'px';
+                }
+            }
+        }
+
+        function onMouseUp() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            // Re-render to ensure state sync for text width/height if needed
+            if (el.type === 'text') {
+                // Text might auto-resize, update model could generally be needed
+            }
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        selectElement(el.id);
+    }
+</script>
+{% endblock %}
