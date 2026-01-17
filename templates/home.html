@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - PDF Suite{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <header class="dashboard-header">
+        <h1>Every tool you need to work with PDFs in one place</h1>
+        <p class="dashboard-description">
+            Every tool you need to use PDFs, at your fingertips. All are 100% FREE and easy to use! Merge,
+            split, compress, convert, rotate, unlock and watermark PDFs with just a few clicks.
+        </p>
+    </header>
+
+    <div class="filter-bar">
+        <a href="#" class="filter-pill active" data-filter="all">All</a>
+        <a href="#" class="filter-pill" data-filter="tool-organize">Organize PDF</a>
+        <a href="#" class="filter-pill" data-filter="tool-optimize">Optimize PDF</a>
+        <a href="#" class="filter-pill" data-filter="tool-convert">Convert PDF</a>
+        <a href="#" class="filter-pill" data-filter="tool-security">PDF Security</a>
+    </div>
+
+    <div class="tool-grid">
+        <!-- Organize -->
+        <a href="{{ url_for('merge') }}" class="tool-card accent-red tool-organize">
+            <div class="tool-icon-wrapper">
+                <i class="icon">🧩</i>
+            </div>
+            <div class="tool-content">
+                <h3>Merge PDF</h3>
+                <p>Combine multiple PDFs into one unified document.</p>
+                <div class="tool-action">Start Merging →</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('split_page') }}" class="tool-card accent-red tool-organize">
+            <div class="tool-icon-wrapper">
+                <i class="icon">✂️</i>
+            </div>
+            <div class="tool-content">
+                <h3>Split PDF</h3>
+                <p>Extract pages or split your PDF into multiple files.</p>
+                <div class="tool-action">Start Splitting →</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('rotate_page') }}" class="tool-card accent-red tool-organize">
+            <div class="tool-icon-wrapper">
+                <i class="icon">🔄</i>
+            </div>
+            <div class="tool-content">
+                <h3>Rotate PDF</h3>
+                <p>Rotate your PDF files permanently.</p>
+                <div class="tool-action">Rotate Now →</div>
+            </div>
+        </a>
+
+        <!-- Optimize -->
+        <a href="{{ url_for('compress_page') }}" class="tool-card accent-green tool-optimize">
+            <div class="tool-icon-wrapper">
+                <i class="icon">🗜️</i>
+            </div>
+            <div class="tool-content">
+                <h3>Compress PDF</h3>
+                <p>Reduce file size while optimizing for maximal PDF quality.</p>
+                <div class="tool-action">Compress Now →</div>
+            </div>
+        </a>
+
+        <!-- Convert -->
+        <a href="{{ url_for('pdf_to_jpg_page') }}" class="tool-card accent-orange tool-convert">
+            <div class="tool-icon-wrapper">
+                <i class="icon">🖼️</i>
+            </div>
+            <div class="tool-content">
+                <h3>PDF to JPG</h3>
+                <p>Convert each PDF page into a JPG image.</p>
+                <div class="tool-action">Convert Now →</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('jpg_to_pdf_page') }}" class="tool-card accent-orange tool-convert">
+            <div class="tool-icon-wrapper">
+                <i class="icon">📷</i>
+            </div>
+            <div class="tool-content">
+                <h3>JPG to PDF</h3>
+                <p>Convert JPG images to PDF in seconds.</p>
+                <div class="tool-action">Convert Now →</div>
+            </div>
+        </a>
+
+        <!-- Security -->
+        <a href="{{ url_for('protect_page') }}" class="tool-card accent-purple tool-security">
+            <div class="tool-icon-wrapper">
+                <i class="icon">🛡️</i>
+            </div>
+            <div class="tool-content">
+                <h3>Protect PDF</h3>
+                <p>Encrypt your PDF with a password.</p>
+                <div class="tool-action">Protect Now →</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('unlock_page') }}" class="tool-card accent-teal tool-security">
+            <div class="tool-icon-wrapper">
+                <i class="icon">🔓</i>
+            </div>
+            <div class="tool-content">
+                <h3>Unlock PDF</h3>
+                <p>Remove PDF password security.</p>
+                <div class="tool-action">Unlock Now →</div>
+            </div>
+        </a>
+
+        <a href="{{ url_for('watermark_page') }}" class="tool-card accent-blue tool-security">
+            <div class="tool-icon-wrapper">
+                <i class="icon">✒️</i>
+            </div>
+            <div class="tool-content">
+                <h3>Watermark</h3>
+                <p>Add text or image watermark to your PDF.</p>
+                <div class="tool-action">Add Watermark →</div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<script>
+    // Simple Filter Logic
+    document.addEventListener('DOMContentLoaded', () => {
+        const pills = document.querySelectorAll('.filter-pill');
+        const cards = document.querySelectorAll('.tool-card');
+
+        pills.forEach(pill => {
+            pill.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                // Active State
+                pills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+
+                const filter = pill.getAttribute('data-filter');
+
+                cards.forEach(card => {
+                    if (filter === 'all') {
+                        card.style.display = 'flex';
+                    } else {
+                        if (card.classList.contains(filter)) {
+                            card.style.display = 'flex';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

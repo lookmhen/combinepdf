@@ -39,20 +39,20 @@
 }
 
 body.night-mode {
-    --bg-body: #22223b;
-    /* Deep Purple Navy */
-    --bg-card: #2f2f4f;
-    --bg-gradient: linear-gradient(135deg, #22223b 0%, #1a1a2e 100%);
+    --bg-body: #1a1a2e;
+    /* Softer Dark Blue, less "black" */
+    --bg-card: #252540;
+    --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
 
-    --text-main: #f2e9e4;
-    --text-muted: #c9ada7;
-    --border: #4a4e69;
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: #334155;
 
-    --primary: #ff99ac;
-    --primary-hover: #ff758f;
+    --primary: #fb7185;
+    --primary-hover: #f43f5e;
 
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 8px 16px -4px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 8px 16px -4px rgba(0, 0, 0, 0.3);
 }
 
 /* Base Styles */
@@ -66,97 +66,44 @@ body {
     font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background: var(--bg-gradient);
     background-attachment: fixed;
-    /* Keep gradient fixed */
     color: var(--text-main);
     line-height: 1.5;
     transition: background 0.3s ease, color 0.3s ease;
     display: flex;
+    flex-direction: column;
     min-height: 100vh;
 }
 
 /* Layout */
 .app-container {
-    display: flex;
     width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0;
 }
 
-/* Sidebar */
-.sidebar {
-    width: 260px;
-    background-color: var(--bg-card);
-    border-right: 1px solid var(--border);
-    padding: 2rem 1rem;
-    display: flex;
-    flex-direction: column;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    transition: var(--transition);
+/* Logo (Now in Header) */
+.logo-link {
+    text-decoration: none;
 }
 
 .logo {
     font-size: 1.5rem;
     font-weight: 700;
-    margin-bottom: 2rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     color: var(--primary);
-}
-
-.nav-menu {
-    list-style: none;
-    flex-grow: 1;
-}
-
-.nav-item {
-    margin-bottom: 0.5rem;
-}
-
-.nav-category {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-muted);
-    margin: 1.5rem 0 0.5rem 0.5rem;
-    font-weight: 700;
-}
-
-.nav-category:first-of-type {
-    margin-top: 0;
-}
-
-.nav-link {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-md);
-    text-decoration: none;
-    color: var(--text-muted);
-    font-weight: 500;
-    transition: var(--transition);
-}
-
-.nav-link:hover,
-.nav-link.active {
-    background-color: var(--primary-light);
-    color: #881337;
-    /* Rose-900 */
-}
-
-.night-mode .nav-link:hover,
-.night-mode .nav-link.active {
-    background-color: rgba(251, 113, 133, 0.2);
-    color: var(--primary);
+    margin: 0;
+    /* Reset margin */
 }
 
 /* Main Content */
 .main-content {
-    flex-grow: 1;
     padding: 2rem;
-    overflow-y: auto;
+    width: 100%;
 }
+
 
 .header {
     display: flex;
@@ -301,8 +248,7 @@ body {
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: var(--shadow-lg);
-    transition: var(--transition);
+    height: auto;
 }
 
 .btn-primary:hover {
@@ -314,4 +260,196 @@ body {
     opacity: 0.7;
     cursor: not-allowed;
     transform: none;
+}
+
+/* --- DASHBOARD STYLES (Modern) --- */
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem 0;
+}
+
+.dashboard-header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+}
+
+.dashboard-description {
+    font-size: 1.125rem;
+    color: var(--text-muted);
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* Filter Bar (Pills) */
+.filter-bar {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 3rem;
+}
+
+.filter-pill {
+    padding: 0.6rem 1.25rem;
+    border-radius: 9999px;
+    /* Full pill shape */
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.filter-pill:hover {
+    background-color: var(--bg-body);
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.filter-pill.active {
+    background-color: var(--text-main);
+    color: white;
+    border-color: var(--text-main);
+}
+
+/* Tool Grid */
+.tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.tool-card {
+    background: var(--bg-card);
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    text-decoration: none;
+    color: var(--text-main);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+}
+
+.tool-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: var(--border);
+}
+
+.tool-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+    transition: transform 0.3s ease;
+}
+
+/* Specific Accent Colors for Icons */
+.accent-red .tool-icon-wrapper {
+    background-color: #ffe5e9;
+    color: #ff3b5c;
+}
+
+.accent-orange .tool-icon-wrapper {
+    background-color: #ffead0;
+    color: #ff8c00;
+}
+
+.accent-green .tool-icon-wrapper {
+    background-color: #dcfce7;
+    color: #22c55e;
+}
+
+.accent-blue .tool-icon-wrapper {
+    background-color: #dbeafe;
+    color: #3b82f6;
+}
+
+.accent-purple .tool-icon-wrapper {
+    background-color: #f3e8ff;
+    color: #a855f7;
+}
+
+.accent-teal .tool-icon-wrapper {
+    background-color: #ccfbf1;
+    color: #14b8a6;
+}
+
+.tool-card:hover .tool-icon-wrapper {
+    transform: scale(1.1) rotate(3deg);
+}
+
+.tool-content h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+}
+
+.tool-content p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Keyframes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Start Button Overlay (Optional, for hover) */
+.tool-action {
+    margin-top: auto;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--primary);
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 1rem;
+}
+
+.tool-card:hover .tool-action {
+    opacity: 1;
+    transform: translateX(0);
 }

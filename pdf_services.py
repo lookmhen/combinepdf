@@ -371,3 +371,75 @@ def compress_pdf(file_path: str, output_path: str, dpi: int = 72, quality: int =
     except Exception as e:
         logger.error(f"Error compressing PDF: {e}")
         raise
+
+def protect_pdf(file_path: str, output_path: str, user_pwd: str, owner_pwd: str, permissions: dict = None) -> str:
+    """
+    Encrypt PDF with user and owner passwords and set permissions.
+    """
+    try:
+        reader = PdfReader(file_path)
+        writer = PdfWriter()
+        writer.append_pages_from_reader(reader)
+        
+        # Permissions mapping
+        # print, modify, copy, annot-forms, fill-forms, extract, assemble, print-high
+        perms = {
+            'print': permissions.get('print', True) if permissions else True,
+            'copy': permissions.get('copy', True) if permissions else True,
+            'modify': permissions.get('modify', True) if permissions else True
+        }
+        
+        # In pypdf >= 3.0.0, encryption is handled via encrypt()
+        # permissions_flag is an integer bitfield.
+        # UserAccessPermissions is a helper enum in pypdf.
+        from pypdf.constants import UserAccessPermissions
+        
+        flags = 0
+        if perms['print']: flags |= UserAccessPermissions.PRINT
+        if perms['modify']: flags |= UserAccessPermissions.MODIFY
+        if perms['copy']: flags |= UserAccessPermissions.COPY
+        flags |= UserAccessPermissions.ACCESSIBILITY # Always allow accessibility
+        
+        writer.encrypt(
+            user_password=user_pwd,
+            owner_password=owner_pwd,
+            permissions_flag=flags,
+            algorithm="AES-128" # Stronger encryption
+        )
+        
+        with open(output_path, "wb") as f:
+            writer.write(f)
+            
+        logger.info(f"Protected PDF saved to {output_path}")
+        return output_path
+        
+    except Exception as e:
+        logger.error(f"Error protecting PDF: {e}")
+        raise
+
+def unlock_pdf(file_path: str, output_path: str, password: str) -> str:
+    """
+    Remove password security from PDF.
+    """
+    try:
+        reader = PdfReader(file_path)
+        
+        if reader.is_encrypted:
+            # Try to decrypt with provided password
+            if not reader.decrypt(password):
+                # Try empty password just in case it's only permission locked
+                if not reader.decrypt(""):
+                    raise ValueError("Incorrect password")
+        
+        writer = PdfWriter()
+        writer.append_pages_from_reader(reader)
+        
+        with open(output_path, "wb") as f:
+            writer.write(f)
+            
+        logger.info(f"Unlocked PDF saved to {output_path}")
+        return output_path
+        
+    except Exception as e:
+        logger.error(f"Error unlocking PDF: {e}")
+        raise

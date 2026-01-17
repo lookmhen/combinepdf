@@ -31,7 +31,7 @@ def run_cleanup():
 
 @app.route('/')
 def root():
-    return render_template('index.html')
+    return render_template('home.html')
 
 @app.route('/merge/')
 def home():
@@ -375,6 +375,120 @@ def watermark():
             os.remove(saved_path)
         if image_path and os.path.exists(image_path):
             os.remove(image_path)
+
+@app.route('/protect')
+def protect_page():
+    return render_template('protect.html')
+
+@app.route('/protect', methods=['POST'])
+def protect():
+    """Protect PDF(s)."""
+    uploaded_files = request.files.getlist("files[]")
+    if not uploaded_files:
+        if 'file' in request.files:
+            uploaded_files = [request.files['file']]
+        else:
+             return jsonify({"error": "No files uploaded"}), 400
+             
+    if not uploaded_files or uploaded_files[0].filename == '':
+        return jsonify({"error": "No files selected"}), 400
+
+    saved_paths = []
+    
+    try:
+        user_pwd = request.form.get('user_password', '')
+        owner_pwd = request.form.get('owner_password', '')
+        permissions = {
+            'print': request.form.get('allow_print') == 'true',
+            'copy': request.form.get('allow_copy') == 'true',
+            'modify': request.form.get('allow_modify') == 'true'
+        }
+        
+        for file in uploaded_files:
+            if file and file.filename.lower().endswith('.pdf'):
+                filename = secure_filename(file.filename)
+                temp_filename = f"prot_in_{secrets.token_hex(4)}_{filename}"
+                saved_path = utils.get_temp_path(temp_filename)
+                file.save(saved_path)
+                saved_paths.append((saved_path, filename))
+                
+        if not saved_paths:
+            return jsonify({"error": "No valid PDF files"}), 400
+            
+        protected_paths = []
+        for input_path, original_name in saved_paths:
+            output_filename = f"protected_{original_name}"
+            output_path = utils.get_temp_path(f"prot_out_{secrets.token_hex(4)}_{original_name}")
+            pdf_services.protect_pdf(input_path, output_path, user_pwd, owner_pwd, permissions)
+            protected_paths.append((output_path, output_filename))
+            
+        if len(protected_paths) == 1:
+            return send_file(protected_paths[0][0], as_attachment=True, download_name=protected_paths[0][1])
+        else:
+            zip_filename = f"protected_files_{secrets.token_hex(4)}.zip"
+            zip_path = utils.get_temp_path(zip_filename)
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                for path, name in protected_paths:
+                    zipf.write(path, name)
+            return send_file(zip_path, as_attachment=True, download_name=zip_filename)
+
+    except Exception as e:
+        logger.error(f"Protect error: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        for path, _ in saved_paths:
+            if os.path.exists(path): os.remove(path)
+        # Periodic cleanup handles outputs
+
+@app.route('/unlock')
+def unlock_page():
+    return render_template('unlock.html')
+
+@app.route('/unlock', methods=['POST'])
+def unlock():
+    """Unlock PDF(s)."""
+    uploaded_files = request.files.getlist("files[]")
+    if not uploaded_files:
+         return jsonify({"error": "No files uploaded"}), 400
+         
+    saved_paths = []
+    try:
+        password = request.form.get('password', '')
+        
+        for file in uploaded_files:
+            if file and file.filename.lower().endswith('.pdf'):
+                filename = secure_filename(file.filename)
+                temp_filename = f"unlock_in_{secrets.token_hex(4)}_{filename}"
+                saved_path = utils.get_temp_path(temp_filename)
+                file.save(saved_path)
+                saved_paths.append((saved_path, filename))
+                
+        if not saved_paths:
+             return jsonify({"error": "No valid PDF files"}), 400
+             
+        unlocked_paths = []
+        for input_path, original_name in saved_paths:
+            output_filename = f"unlocked_{original_name}"
+            output_path = utils.get_temp_path(f"unlock_out_{secrets.token_hex(4)}_{original_name}")
+            pdf_services.unlock_pdf(input_path, output_path, password)
+            unlocked_paths.append((output_path, output_filename))
+            
+        if len(unlocked_paths) == 1:
+            return send_file(unlocked_paths[0][0], as_attachment=True, download_name=unlocked_paths[0][1])
+        else:
+            zip_filename = f"unlocked_files_{secrets.token_hex(4)}.zip"
+            zip_path = utils.get_temp_path(zip_filename)
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                for path, name in unlocked_paths:
+                    zipf.write(path, name)
+            return send_file(zip_path, as_attachment=True, download_name=zip_filename)
+
+    except Exception as e:
+        logger.error(f"Unlock error: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        for path, _ in saved_paths:
+            if os.path.exists(path): os.remove(path)
 
 @app.route('/compress')
 def compress_page():

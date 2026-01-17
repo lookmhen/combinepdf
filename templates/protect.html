@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}Protect PDF - PDF Suite{% endblock %}
+{% block page_title %}Protect PDF{% endblock %}
+
+{% block content %}
+<div class="tool-container fade-in">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Encrypt your PDFs with passwords and set usage permissions.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-box">
+        <div class="upload-icon">🔒</div>
+        <h3>Select PDF Files to Protect</h3>
+        <p style="color: var(--text-muted); margin-bottom: 0;">Drag & drop or click to browse</p>
+        <input type="file" id="file-input" accept=".pdf" multiple style="display: none;">
+    </div>
+
+    <!-- File Info -->
+    <div id="file-info-container" style="display: none; width: 100%; max-width: 600px; margin: 2rem auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4 style="margin: 0;">Selected Files (<span id="file-count">0</span>)</h4>
+            <button id="clear-all-btn" class="btn-text" style="color: var(--danger);">Clear All</button>
+        </div>
+        <div id="file-list"
+            style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;"></div>
+    </div>
+
+    <!-- Security Settings -->
+    <div id="security-settings" style="display: none; width: 100%; max-width: 600px; margin: 2rem auto;">
+
+        <!-- Passwords -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-title">Passwords</div>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- User Password -->
+                <div class="input-group">
+                    <label>User Password (to Open)</label>
+                    <div style="position: relative;">
+                        <input type="password" id="user-pass" placeholder="Enter password to open file"
+                            class="modern-input" style="width: 100%;">
+                        <span class="toggle-pass" onclick="togglePass('user-pass', this)"
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer;">👁️</span>
+                    </div>
+                </div>
+                <!-- Owner Password -->
+                <div class="input-group">
+                    <label>Owner Password (to Edit/Print)</label>
+                    <div style="position: relative;">
+                        <input type="password" id="owner-pass" placeholder="Enter password to change permissions"
+                            class="modern-input" style="width: 100%;">
+                        <span class="toggle-pass" onclick="togglePass('owner-pass', this)"
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer;">👁️</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Permissions -->
+        <div class="card">
+            <div class="card-title">Permissions</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Control what users can do with the file. (Requires Owner Password)
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <label class="switch-row">
+                    <span>Allow Printing</span>
+                    <input type="checkbox" id="perm-print" checked>
+                    <span class="slider round"></span>
+                </label>
+                <label class="switch-row">
+                    <span>Allow Copying Text/Images</span>
+                    <input type="checkbox" id="perm-copy" checked>
+                    <span class="slider round"></span>
+                </label>
+                <label class="switch-row">
+                    <span>Allow Modifying Content</span>
+                    <input type="checkbox" id="perm-modify" checked>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar header-actions" style="justify-content: center; margin-top: 2rem;">
+        <button id="protect-btn" class="btn-primary" disabled
+            style="min-width: 200px; padding: 1rem 2rem; font-size: 1.1rem;">
+            Protect Files 🛡️
+        </button>
+    </div>
+</div>
+
+<!-- Processing Overlay -->
+<div id="processing-overlay" class="overlay">
+    <div class="processing-card">
+        <div class="spinner"></div>
+        <h3>Encrypting PDFs...</h3>
+        <p>Applying security settings</p>
+    </div>
+</div>
+
+<style>
+    /* Reuse upload box styles for consistency */
+    .upload-box {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-lg);
+        padding: 4rem 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-card);
+    }
+
+    .upload-box:hover,
+    .upload-box.drag-active {
+        border-color: var(--primary);
+        background: var(--bg-hover);
+        transform: translateY(-2px);
+    }
+
+    .upload-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+    }
+
+    .card-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.5rem;
+    }
+
+    .input-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .modern-input {
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-main);
+        color: var(--text-main);
+        font-family: inherit;
+    }
+
+    .modern-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--primary-alpha);
+    }
+
+    /* Switch Toggle */
+    .switch-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+    }
+
+    .switch-row input {
+        display: none;
+    }
+
+    .slider {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 24px;
+        background-color: var(--border);
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked+.slider {
+        background-color: var(--primary);
+    }
+
+    input:checked+.slider:before {
+        transform: translateX(16px);
+    }
+
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    .overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .processing-card {
+        background: var(--bg-card);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        text-align: center;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.5rem;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+    }
+</style>
+
+<script>
+    let selectedFiles = [];
+    const elements = {
+        dropArea: document.getElementById('drop-area'),
+        fileInput: document.getElementById('file-input'),
+        fileInfo: document.getElementById('file-info-container'),
+        fileList: document.getElementById('file-list'),
+        fileCount: document.getElementById('file-count'),
+        clearBtn: document.getElementById('clear-all-btn'),
+        settings: document.getElementById('security-settings'),
+        protectBtn: document.getElementById('protect-btn'),
+        overlay: document.getElementById('processing-overlay')
+    };
+
+    // Helper: Toggle Password Visibility
+    window.togglePass = (id, icon) => {
+        const input = document.getElementById(id);
+        if (input.type === "password") {
+            input.type = "text";
+            icon.innerText = "🔒"; // Locked Open
+        } else {
+            input.type = "password";
+            icon.innerText = "👁️";
+        }
+    };
+
+    // -- File Handling --
+    elements.dropArea.addEventListener('click', () => elements.fileInput.click());
+    elements.fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    elements.dropArea.addEventListener('dragover', (e) => { e.preventDefault(); elements.dropArea.classList.add('drag-active'); });
+    elements.dropArea.addEventListener('dragleave', () => elements.dropArea.classList.remove('drag-active'));
+    elements.dropArea.addEventListener('drop', (e) => {
+        e.preventDefault(); elements.dropArea.classList.remove('drag-active');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    elements.clearBtn.addEventListener('click', () => { selectedFiles = []; updateUI(); elements.fileInput.value = ''; });
+
+    function handleFiles(files) {
+        for (let file of files) {
+            if (file.type === 'application/pdf') selectedFiles.push(file);
+        }
+        updateUI();
+    }
+
+    function updateUI() {
+        elements.fileList.innerHTML = '';
+        elements.fileCount.innerText = selectedFiles.length;
+
+        if (selectedFiles.length === 0) {
+            elements.fileInfo.style.display = 'none';
+            elements.settings.style.display = 'none';
+            elements.dropArea.style.display = 'block';
+            elements.protectBtn.disabled = true;
+            return;
+        }
+
+        elements.dropArea.style.display = 'none';
+        elements.fileInfo.style.display = 'block';
+        elements.settings.style.display = 'block';
+        elements.protectBtn.disabled = false;
+
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'file-item';
+            div.innerHTML = `
+                <span>📄</span>
+                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${file.name}</span>
+                <button onclick="selectedFiles.splice(${index}, 1); updateUI();" class="btn-text">✖</button>
+            `;
+            elements.fileList.appendChild(div);
+        });
+    }
+
+    // -- Submit --
+    elements.protectBtn.addEventListener('click', async () => {
+        const userPass = document.getElementById('user-pass').value;
+        const ownerPass = document.getElementById('owner-pass').value;
+        const allowPrint = document.getElementById('perm-print').checked;
+        const allowCopy = document.getElementById('perm-copy').checked;
+        const allowModify = document.getElementById('perm-modify').checked;
+
+        if (!userPass && !ownerPass) {
+            if (!confirm("You haven't set any passwords. The file will not be encrypted. Continue?")) return;
+        }
+
+        elements.overlay.classList.add('active');
+
+        const formData = new FormData();
+        selectedFiles.forEach(f => formData.append('files[]', f));
+        formData.append('user_password', userPass);
+        formData.append('owner_password', ownerPass);
+        formData.append('allow_print', allowPrint);
+        formData.append('allow_copy', allowCopy);
+        formData.append('allow_modify', allowModify);
+
+        try {
+            const res = await fetch('/protect', { method: 'POST', body: formData });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = selectedFiles.length > 1 ? 'protected_batch.zip' : 'protected_' + selectedFiles[0].name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                setTimeout(() => {
+                    elements.overlay.classList.remove('active');
+                    // Reset?
+                    if (confirm("Protection complete! Do you want to clear the files?")) {
+                        selectedFiles = []; updateUI();
+                    }
+                }, 1000);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert('Error: ' + (err.error || "Unknown"));
+                elements.overlay.classList.remove('active');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to protect files.');
+            elements.overlay.classList.remove('active');
+        }
+    });
+</script>
+{% endblock %}

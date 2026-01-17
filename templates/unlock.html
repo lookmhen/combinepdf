@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Unlock PDF - PDF Suite{% endblock %}
+{% block page_title %}Unlock PDF{% endblock %}
+
+{% block content %}
+<div class="tool-container fade-in">
+    <p class="tool-description" style="color: var(--text-muted); margin-bottom: 2rem;">
+        Remove password security from your PDF files.
+    </p>
+
+    <!-- Upload Area -->
+    <div id="drop-area" class="upload-box">
+        <div class="upload-icon">🔓</div>
+        <h3>Select Protected PDF Files</h3>
+        <p style="color: var(--text-muted); margin-bottom: 0;">Drag & drop or click to browse</p>
+        <input type="file" id="file-input" accept=".pdf" multiple style="display: none;">
+    </div>
+
+    <!-- File Info -->
+    <div id="file-info-container" style="display: none; width: 100%; max-width: 600px; margin: 2rem auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4 style="margin: 0;">Selected Files (<span id="file-count">0</span>)</h4>
+            <button id="clear-all-btn" class="btn-text" style="color: var(--danger);">Clear All</button>
+        </div>
+        <div id="file-list"
+            style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;"></div>
+    </div>
+
+    <!-- Unlock Settings -->
+    <div id="unlock-settings" style="display: none; width: 100%; max-width: 400px; margin: 2rem auto;">
+        <div class="card">
+            <div class="card-title">Unlock Password</div>
+            <div class="input-group">
+                <label>Enter Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="unlock-pass" placeholder="Password to open file" class="modern-input"
+                        style="width: 100%;">
+                    <span class="toggle-pass" onclick="togglePass('unlock-pass', this)"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer;">👁️</span>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
+                    Leave blank if the file has no open password (owner lock only).
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar header-actions" style="justify-content: center; margin-top: 2rem;">
+        <button id="unlock-btn" class="btn-primary" disabled
+            style="min-width: 200px; padding: 1rem 2rem; font-size: 1.1rem;">
+            Unlock Files 🔓
+        </button>
+    </div>
+</div>
+
+<!-- Processing Overlay -->
+<div id="processing-overlay" class="overlay">
+    <div class="processing-card">
+        <div class="spinner"></div>
+        <h3>Unlocking PDFs...</h3>
+        <p>Decrypting files</p>
+    </div>
+</div>
+
+<style>
+    /* Reuse consistent styles */
+    .upload-box {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-lg);
+        padding: 4rem 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-card);
+    }
+
+    .upload-box:hover,
+    .upload-box.drag-active {
+        border-color: var(--primary);
+        background: var(--bg-hover);
+        transform: translateY(-2px);
+    }
+
+    .upload-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+    }
+
+    .card-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.5rem;
+    }
+
+    .modern-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-main);
+        color: var(--text-main);
+    }
+
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    .overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .processing-card {
+        background: var(--bg-card);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        text-align: center;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        animation: spin 1s infinite linear;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.5rem;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .btn-text {
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    let selectedFiles = [];
+    const elements = {
+        dropArea: document.getElementById('drop-area'),
+        fileInput: document.getElementById('file-input'),
+        fileInfo: document.getElementById('file-info-container'),
+        fileList: document.getElementById('file-list'),
+        fileCount: document.getElementById('file-count'),
+        clearBtn: document.getElementById('clear-all-btn'),
+        settings: document.getElementById('unlock-settings'),
+        unlockBtn: document.getElementById('unlock-btn'),
+        overlay: document.getElementById('processing-overlay')
+    };
+
+    window.togglePass = (id, icon) => {
+        const input = document.getElementById(id);
+        if (input.type === "password") { input.type = "text"; icon.innerText = "🔒"; }
+        else { input.type = "password"; icon.innerText = "👁️"; }
+    };
+
+    elements.dropArea.addEventListener('click', () => elements.fileInput.click());
+    elements.fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+    elements.dropArea.addEventListener('dragover', (e) => { e.preventDefault(); elements.dropArea.classList.add('drag-active'); });
+    elements.dropArea.addEventListener('dragleave', () => elements.dropArea.classList.remove('drag-active'));
+    elements.dropArea.addEventListener('drop', (e) => { e.preventDefault(); elements.dropArea.classList.remove('drag-active'); handleFiles(e.dataTransfer.files); });
+    elements.clearBtn.addEventListener('click', () => { selectedFiles = []; updateUI(); elements.fileInput.value = ''; });
+
+    function handleFiles(files) {
+        for (let file of files) { if (file.type === 'application/pdf') selectedFiles.push(file); }
+        updateUI();
+    }
+
+    function updateUI() {
+        elements.fileList.innerHTML = '';
+        elements.fileCount.innerText = selectedFiles.length;
+
+        if (selectedFiles.length === 0) {
+            elements.fileInfo.style.display = 'none';
+            elements.settings.style.display = 'none';
+            elements.dropArea.style.display = 'block';
+            elements.unlockBtn.disabled = true;
+            return;
+        }
+
+        elements.dropArea.style.display = 'none';
+        elements.fileInfo.style.display = 'block';
+        elements.settings.style.display = 'block';
+        elements.unlockBtn.disabled = false;
+
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'file-item';
+            div.innerHTML = `<span>📄</span><span style="flex:1;">${file.name}</span><button onclick="selectedFiles.splice(${index}, 1); updateUI();" class="btn-text">✖</button>`;
+            elements.fileList.appendChild(div);
+        });
+    }
+
+    elements.unlockBtn.addEventListener('click', async () => {
+        const password = document.getElementById('unlock-pass').value;
+        elements.overlay.classList.add('active');
+
+        const formData = new FormData();
+        selectedFiles.forEach(f => formData.append('files[]', f));
+        formData.append('password', password);
+
+        try {
+            const res = await fetch('/unlock', { method: 'POST', body: formData });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = selectedFiles.length > 1 ? 'unlocked_batch.zip' : 'unlocked_' + selectedFiles[0].name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                setTimeout(() => {
+                    elements.overlay.classList.remove('active');
+                    if (confirm("Unlock complete! Clear files?")) { selectedFiles = []; updateUI(); }
+                }, 1000);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert('Error: ' + (err.error || "Unknown"));
+                elements.overlay.classList.remove('active');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to unlock files.');
+            elements.overlay.classList.remove('active');
+        }
+    });
+</script>
+{% endblock %}
