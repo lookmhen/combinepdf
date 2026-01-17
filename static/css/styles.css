@@ -113,6 +113,19 @@ body {
     margin-bottom: 0.5rem;
 }
 
+.nav-category {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin: 1.5rem 0 0.5rem 0.5rem;
+    font-weight: 700;
+}
+
+.nav-category:first-of-type {
+    margin-top: 0;
+}
+
 .nav-link {
     display: flex;
     align-items: center;

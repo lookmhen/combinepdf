@@ -34,25 +34,34 @@
             </div>
 
             <ul class="nav-menu">
+
+                <li class="nav-category">Modify</li>
                 <li class="nav-item">
                     <a href="{{ url_for('home') }}"
-                        class="nav-link {% if request.path == '/' or request.path == '/merge/' %}active{% endif %}">
-                        <span>🧩</span> Merge PDF
-                    </a>
-                </li>
-                <!-- Future Features Placeholders -->
-                <li class="nav-item">
-                    <a href="{{ url_for('rotate_page') }}"
-                        class="nav-link {% if request.path == '/rotate' %}active{% endif %}">
-                        <span>🔄</span> Rotate PDF
+                        class="nav-link {% if request.path == '/merge/' %}active{% endif %}">
+                        <span>🧩</span> Merge
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="{{ url_for('split_page') }}"
                         class="nav-link {% if request.path == '/split' %}active{% endif %}">
-                        <span>✂️</span> Split PDF
+                        <span>✂️</span> Split
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('rotate_page') }}"
+                        class="nav-link {% if request.path == '/rotate' %}active{% endif %}">
+                        <span>🔄</span> Rotate
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('compress_page') }}"
+                        class="nav-link {% if request.path == '/compress' %}active{% endif %}">
+                        <span>🗜️</span> Compress
+                    </a>
+                </li>
+
+                <li class="nav-category">Convert</li>
                 <li class="nav-item">
                     <a href="{{ url_for('pdf_to_jpg_page') }}"
                         class="nav-link {% if request.path == '/pdf-to-jpg' %}active{% endif %}">
@@ -65,16 +74,24 @@
                         <span>📷</span> JPG to PDF
                     </a>
                 </li>
+
+                <li class="nav-category">Security</li>
                 <li class="nav-item">
-                    <a href="{{ url_for('watermark_page') }}"
-                        class="nav-link {% if request.path == '/watermark' %}active{% endif %}">
-                        <span>✒️</span> Watermark PDF
+                    <a href="{{ url_for('protect_page') }}"
+                        class="nav-link {% if request.path == '/protect' %}active{% endif %}">
+                        <span>🛡️</span> Protect
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ url_for('compress_page') }}"
-                        class="nav-link {% if request.path == '/compress' %}active{% endif %}">
-                        <span>🗜️</span> Compress PDF
+                    <a href="{{ url_for('unlock_page') }}"
+                        class="nav-link {% if request.path == '/unlock' %}active{% endif %}">
+                        <span>🔓</span> Unlock
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('watermark_page') }}"
+                        class="nav-link {% if request.path == '/watermark' %}active{% endif %}">
+                        <span>✒️</span> Watermark
                     </a>
                 </li>
             </ul>
