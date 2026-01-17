@@ -77,10 +77,12 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 2rem;
+        padding: 1rem;
         border: 1px solid var(--border);
         border-radius: var(--radius-md);
         position: relative;
+        min-width: 0;
+        /* Critical for flex child overflow */
     }
 
     /* Page Container */
@@ -102,6 +104,30 @@
         width: 100%;
         height: 100%;
         z-index: 1;
+    }
+
+    /* Editable Element Box (for images, shapes, text) */
+    .element-box {
+        position: absolute;
+        cursor: move;
+        border: 1px solid transparent;
+        box-sizing: border-box;
+        overflow: hidden;
+        /* Prevents content from overflowing the resized dimensions */
+    }
+
+    .element-box:hover {
+        border-color: var(--primary);
+    }
+
+    .element-box.selected {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+
+    .element-content {
+        width: 100%;
+        height: 100%;
     }
 
     /* Right Sidebar (Layers) */
@@ -746,6 +772,22 @@
         els.pageNav.innerHTML = '';
         state.pages = [];
 
+        // Auto-Calculate Scale based on Page 1
+        if (state.pdfDoc.numPages > 0) {
+            try {
+                const firstPage = await state.pdfDoc.getPage(1);
+                const viewport1 = firstPage.getViewport({ scale: 1 });
+                const availableWidth = els.canvasWrapper.clientWidth - 48; // Wrapper padding (~2rem total) + margin safety
+                if (availableWidth > 0 && viewport1.width > 0) {
+                    const newScale = availableWidth / viewport1.width;
+                    // Clamp scale to reasonable bounds (e.g. 0.5 to 2.5) to prevent extreme sizes
+                    state.scale = Math.min(Math.max(newScale, 0.4), 2.5);
+                }
+            } catch (e) {
+                console.error("Error auto-scaling:", e);
+            }
+        }
+
         for (let i = 1; i <= state.pdfDoc.numPages; i++) {
             const page = await state.pdfDoc.getPage(i);
             const viewport = page.getViewport({ scale: state.scale });
@@ -858,15 +900,28 @@
             if (ev.target.files[0]) {
                 const file = ev.target.files[0];
                 const url = URL.createObjectURL(file);
-                // Insert immediately at center of active page
-                const pIdx = state.activePageIdx || 0;
-                const page = state.pages[pIdx];
-                if (page) {
-                    const x = page.w / 2 - 75;
-                    const y = page.h / 2 - 75;
-                    addElement(pIdx, 'image', { x, y, w: 150, h: 150, src: url, file: file });
-                }
-                setTool('select');
+
+                // Load image to get dimensions
+                const img = new Image();
+                img.onload = () => {
+                    const aspect = img.naturalWidth / img.naturalHeight;
+
+                    // Fixed width start: 200px
+                    let w = 200;
+                    let h = 200 / aspect; // Auto height based on ratio
+
+                    // Insert immediately at center of active page
+                    const pIdx = state.activePageIdx || 0;
+                    const page = state.pages[pIdx];
+
+                    if (page) {
+                        const x = page.w / 2 - (w / 2);
+                        const y = page.h / 2 - (h / 2);
+                        addElement(pIdx, 'image', { x, y, w, h, src: url, file: file });
+                    }
+                    setTool('select');
+                };
+                img.src = url;
             }
         };
         input.click();
@@ -1013,6 +1068,9 @@
         } else if (el.type === 'image') {
             const img = document.createElement('img');
             img.src = el.props.src;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'fill'; // Fill the box dimensions exactly
             content.appendChild(img);
         }
 
@@ -1024,8 +1082,8 @@
         box.appendChild(handle);
 
         // Drag Logic
-        box.addEventListener('mousedown', (e) => startDrag(e, el, box, 'move'));
-        handle.addEventListener('mousedown', (e) => { e.stopPropagation(); startDrag(e, el, box, 'resize'); });
+        box.addEventListener('mousedown', (e) => startDrag(e, el, box, 'move', pageIdx));
+        handle.addEventListener('mousedown', (e) => { e.stopPropagation(); startDrag(e, el, box, 'resize', pageIdx); });
 
         // Selection
         box.addEventListener('click', (e) => {
@@ -1285,7 +1343,7 @@
     });
 
     // --- Interaction ---
-    function startDrag(e, el, box, mode) {
+    function startDrag(e, el, box, mode, pageIdx) {
         if (state.activeTool !== 'select') return;
 
         // If editing text, do not drag. Check if contentEditable is actually TRUE
@@ -1301,20 +1359,39 @@
         const startW = box.offsetWidth;
         const startH = box.offsetHeight;
 
+        // Boundary Constraints
+        const page = state.pages[pageIdx];
+        const pageW = page.w;
+        const pageH = page.h;
+
         function onMouseMove(ev) {
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
 
             if (mode === 'move') {
-                el.x = startElX + dx;
-                el.y = startElY + dy;
+                let newX = startElX + dx;
+                let newY = startElY + dy;
+
+                // Clamp
+                newX = Math.max(0, Math.min(newX, pageW - el.w));
+                newY = Math.max(0, Math.min(newY, pageH - el.h));
+
+                el.x = newX;
+                el.y = newY;
                 box.style.left = el.x + 'px';
                 box.style.top = el.y + 'px';
             } else if (mode === 'resize') {
                 // For text, resizing usually changes font size or box, keeping simple: box resize
                 if (el.type === 'image' || el.type === 'shape') {
-                    el.w = Math.max(20, startW + dx);
-                    el.h = Math.max(20, startH + dy);
+                    let newW = Math.max(20, startW + dx);
+                    let newH = Math.max(20, startH + dy);
+
+                    // Clamp Resize (ensure x + w <= pageW, y + h <= pageH)
+                    if (el.x + newW > pageW) newW = pageW - el.x;
+                    if (el.y + newH > pageH) newH = pageH - el.y;
+
+                    el.w = newW;
+                    el.h = newH;
                     box.style.width = el.w + 'px';
                     box.style.height = el.h + 'px';
                 }

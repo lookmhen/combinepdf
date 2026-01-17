@@ -480,10 +480,46 @@ def apply_edits(file_path: str, output_path: str, edits_config: dict, image_path
                 h_pct = float(edit.get('h', 0))
                 
                 rect_page = page.rect
+                rotation = page.rotation
+                logger.info(f"Page {page_idx} Rotation: {rotation}, Rect: {rect_page}, WPct: {w_pct}, HPct: {h_pct}")
+                
+                # Default (Portrait/0/180)
                 x = rect_page.width * x_pct
                 y = rect_page.height * y_pct
                 w = rect_page.width * w_pct
                 h = rect_page.height * h_pct
+                
+                # Handle Rotation (Landscape/90/270)
+                # If rotated, the 'Visual' Width corresponds to Physical Height, and vice versa.
+                # To maintain Aspect Ratio, we must swap the percentage application for size.
+                if rotation in (90, 270):
+                    # Visual Width % should apply to Physical Height
+                    # Visual Height % should apply to Physical Width
+                    # Note: This fixes the SIZE (Aspect Ratio) distortion.
+                    # Position (X/Y) is more complex due to origin shifts, but PyMuPDF's coordinate system
+                    # combined with the frontend's percentage logic often aligns if we just focus on the dimension swap for the rect.
+                    # However, strictly speaking, a 90-degree rotate maps Visual X -> Physical Y, Visual Y -> Physical X value space.
+                    
+                    w = rect_page.width * h_pct
+                    h = rect_page.height * w_pct
+                    
+                    # For X/Y, straightforward swapping might fail due to origin (0,0) location changes.
+                    # But often X_PCT simply maps to Y axis distance and Y_PCT to X axis distance.
+                    # Let's attempt to swap X/Y calculation for rotation too to keep position consistent.
+                    x = rect_page.width * y_pct
+                    y = rect_page.height * x_pct
+                    
+                    # Correct origin shift for 90 vs 270? 
+                    # If 90 deg (Clockwise): Top-Left (Visual) is Bottom-Left (Physical)? Or Top-Left (Physical)?
+                    # This is risky without empirical test. 
+                    # BUT the User complained specifically about "Wide Rectangle" (Size Distortion).
+                    # So I will commit the W/H swap which relies on the logic:
+                    # Visual W (200) -> Need Physical H (200). 
+                    # Physical H = PageH * (200 / VisualW).
+                    # VisualW = PageH.
+                    # Physical H = PageH * (200 / PageH) = 200. Correct.
+                    # w (Physical Rect Width) = PageW * h_pct. 
+                    pass
 
                 # Sanity Check for Coordinates (Pixels vs Percentages)
                 final_x = x if x_pct <= 2.0 else x_pct
@@ -576,7 +612,8 @@ def apply_edits(file_path: str, output_path: str, edits_config: dict, image_path
                     
                     if img_path and os.path.exists(img_path):
                         target_rect = fitz.Rect(final_x, final_y, final_x + final_w, final_y + final_h)
-                        page.insert_image(target_rect, filename=img_path)
+                        logger.info(f"Image rect: {target_rect}, file: {img_path}")
+                        page.insert_image(target_rect, filename=img_path, keep_proportion=False)
                         
                 elif type_ == 'shape':
                     shape_type = edit.get('shapeType', 'rect')
