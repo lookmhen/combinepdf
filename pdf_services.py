@@ -415,7 +415,7 @@ def protect_pdf(file_path: str, output_path: str, user_pwd: str, owner_pwd: str,
     try:
         reader = PdfReader(file_path)
         writer = PdfWriter()
-        writer.append_pages_from_reader(reader)
+        writer.append(reader)
         
         # Permissions mapping
         # print, modify, copy, annot-forms, fill-forms, extract, assemble, print-high
@@ -434,7 +434,9 @@ def protect_pdf(file_path: str, output_path: str, user_pwd: str, owner_pwd: str,
         if perms['print']: flags |= UserAccessPermissions.PRINT
         if perms['modify']: flags |= UserAccessPermissions.MODIFY
         if perms['copy']: flags |= UserAccessPermissions.COPY
-        flags |= UserAccessPermissions.ACCESSIBILITY # Always allow accessibility
+        # ACCESSIBILITY attribute removed in pypdf 3.0+. Using raw bit definitions if needed.
+        # Bit 10 (value 512) is typically for accessibility.
+        flags |= 512 # Always allow accessibility
         
         writer.encrypt(
             user_password=user_pwd,
@@ -468,7 +470,7 @@ def unlock_pdf(file_path: str, output_path: str, password: str) -> str:
                     raise ValueError("Incorrect password")
         
         writer = PdfWriter()
-        writer.append_pages_from_reader(reader)
+        writer.append(reader)
         
         with open(output_path, "wb") as f:
             writer.write(f)

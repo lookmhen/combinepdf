@@ -21,10 +21,11 @@
     <div id="file-info-container" style="display: none; width: 100%; max-width: 600px; margin: 2rem auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h4 style="margin: 0;">Selected Files (<span id="file-count">0</span>)</h4>
-            <button id="clear-all-btn" class="btn-text" style="color: var(--danger);">Clear All</button>
+            <button id="clear-all-btn" class="btn-link-danger">Clear All</button>
         </div>
         <div id="file-list"
-            style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;"></div>
+            style="max-height: 200px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 0.5rem;">
+        </div>
     </div>
 
     <!-- Security Settings -->
@@ -254,9 +255,65 @@
         display: flex;
         align-items: center;
         gap: 1rem;
-        padding: 0.5rem;
+        padding: 0.75rem 1rem;
         background: var(--bg-card);
-        border-bottom: 1px solid var(--border);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .file-item:hover {
+        border-color: var(--primary);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-remove {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        transition: all 0.2s;
+    }
+
+    .btn-remove:hover {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+
+    /* Dark mode adjustment for hover */
+    @media (prefers-color-scheme: dark) {
+        .btn-remove:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-link-danger:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+    }
+
+    .btn-link-danger {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-weight: 500;
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+
+    .btn-link-danger:hover {
+        color: #ef4444;
+        background: #fee2e2;
     }
 </style>
 
@@ -327,9 +384,9 @@
             const div = document.createElement('div');
             div.className = 'file-item';
             div.innerHTML = `
-                <span>📄</span>
-                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${file.name}</span>
-                <button onclick="selectedFiles.splice(${index}, 1); updateUI();" class="btn-text">✖</button>
+                <span style="font-size: 1.2rem;">📄</span>
+                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;">${file.name}</span>
+                <button onclick="selectedFiles.splice(${index}, 1); updateUI();" class="btn-remove" title="Remove file">✖</button>
             `;
             elements.fileList.appendChild(div);
         });

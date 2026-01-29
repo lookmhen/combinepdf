@@ -21,3 +21,6 @@ temp/
 .vscode/
 .idea/
 app.spec
+
+#skill
+.agent
